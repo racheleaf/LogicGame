@@ -25,7 +25,7 @@ public class LogicServer {
     
     // ports are where clients connect to the server.  
     // A server socket has 65535 ports, numbered 0-65535
-    private static final int DEFAULT_PORT = 1337;
+    private static final int DEFAULT_PORT = 24601;
     private static final int MAX_PORT = 65535;
     
     private final ServerSocket serverSocket;
