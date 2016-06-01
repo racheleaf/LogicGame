@@ -1,0 +1,13 @@
+# COMPILED SOURCE #
+###################
+*.class
+*.classpath
+*.project
+Java/.metadata/*
+Java/.recommenders/*
+Java/LogicGame/.settings/*
+Java/LogicGame/bin/*
+
+# OS JUNK #
+###########
+*Thumbs.db

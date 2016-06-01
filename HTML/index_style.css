@@ -1,0 +1,78 @@
+body {
+ background-image: url("images/hunterxhunter1.jpg");
+ background-size: 100%;
+ background-repeat: no-repeat;
+ background-attachment: fixed;
+}
+
+div.entry {
+ width: 65%;
+ position: relative;
+ left: 5%;
+ background-color: gray;
+ border: white 8px double;
+ opacity: .85;
+ filter: alpha(opacity=85);
+ /*margin: auto;*/ /*for centering */
+ margin-bottom: 10px;
+ margin-top: 10px;
+ padding: 5px;
+}
+
+div.side {
+ width: 20%;
+ position: absolute;
+ right: 5%;
+ background-color: white;
+ border: black 4px solid;
+ opacity: .85;
+ filter: alpha(opacity=85);
+}
+
+div.side p {
+ color: black;
+ font-size: 12pt;
+ background-color: white;
+ margin: 10px;
+ padding: 5px;
+ text-align: left;
+}
+
+h1 {
+ color: white;
+ font-size: 36pt;
+ text-align: center;
+}
+
+h2 {
+ color: white;
+ font-size: 24pt;
+ text-align: right;
+ margin: 10px;
+ padding: 5px;
+}
+
+h3 {
+ color: black;
+ font-size: 24pt;
+ text-align: center;
+ margin: 10px;
+ padding: 5px;
+}
+
+p {
+ color: black;
+ font-size: 12pt;
+ background-color: white;
+ margin: 10px;
+ padding: 5px;
+ text-align: left;
+}
+
+/*h2 a:link, h2 a:visited {
+ color: white;
+}*/
+
+h2 a:hover {
+ color: blue;
+}
