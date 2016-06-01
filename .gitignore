@@ -1,7 +1,6 @@
 # COMPILED SOURCE #
 ###################
 *.class
-*.classpath
 Java/.metadata/*
 Java/.recommenders/*
 Java/LogicGame/.settings/*
