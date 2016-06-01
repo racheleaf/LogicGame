@@ -9,8 +9,20 @@ import java.net.Socket;
 
 import game.GameBoard;
 
+/**
+ * A server for Logic
+ */
 public class LogicServer {
 
+    /*
+     * Since this code is very heavily commented: 
+     * comments of form // ... are explanatory
+     * comments of form /* ... are for things to be changed/maintained
+     * 
+     * ^lol oops if this is documentation of documentation, does that make it
+     * meta-documentation ><
+     */
+    
     // ports are where clients connect to the server.  
     // A server socket has 65535 ports, numbered 0-65535
     private static final int DEFAULT_PORT = 1337;
@@ -33,7 +45,8 @@ public class LogicServer {
     
     // Sometimes a player's thread has to "wait" - e.g. when it isn't his turn.  
     // This is achieved by the .wait() function - for any object obj, if a thread
-    // calls obj.wait() it goes to sleep until another thread calls obj.notify()
+    // calls obj.wait() it goes to sleep until another thread calls obj.notify().
+    // obj serves as the thread's "lock"
     // 
     // Here, basically player x's handler thread calls threadControls[x].wait when 
     // he has to wait, and the master server thread calls threadControls[x].notify 
@@ -59,7 +72,7 @@ public class LogicServer {
      *                     (IOExceptions from individual clients do *not* terminate serve())
      */
     public void serve() throws IOException {
-        //TODO bug: numPlayers is very very not threadsafe
+        /*TODO bug: numPlayers is very very not threadsafe*/
         
         // While there are fewer than 4 players, wait for more connections, and
         // when a connection comes make a new thread that handles it
@@ -90,7 +103,7 @@ public class LogicServer {
             // Remembers the handler threads
             
             clientThreads[numPlayers] = thread;
-            numPlayers++; //TODO synchronization issues here, this is jank
+            numPlayers++; /*TODO synchronization issues here, this is jank*/
             
             thread.start();
         }
@@ -103,10 +116,10 @@ public class LogicServer {
                 obj.notify();                
             }
         }
-        //TODO bug: last player to enter gets his threadControl object notified before it's put on wait,
-        //so he gets put on wait again and gets stuck
+        /*TODO bug: last player to enter gets his threadControl object notified before it's put on wait,
+        so he gets put on wait again and gets stuck*/
 
-        //TODO main phase of game
+        /*TODO main phase of game*/
         
     }
     
@@ -157,7 +170,7 @@ public class LogicServer {
                 }
             }
             
-            // TODO main phase of game
+            /*TODO main phase of game*/
 
         } finally {
             out.close();
@@ -218,7 +231,7 @@ public class LogicServer {
      * @param args bleh
      */
     public static void main(String[] args){
-        // TODO provide command line interface??
+        /*TODO provide command line interface??*/
         try{
             runLogicServer(DEFAULT_PORT);
         } catch (IOException e){
