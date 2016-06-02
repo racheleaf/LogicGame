@@ -18,6 +18,30 @@ public class Deck {
 		deck = d;
 	}
 	
+	/** 
+	 * Create deck based on type of deck to be created
+	 * Classic deck is all four suits, 1-13
+	 * Logic deck is Diamonds and Spades, 1-12
+	 * @param type String "Classic" or "Logic" corresponding to type of deck wished to be created
+	 */
+	public Deck (String type) {
+		assert (type.equals("Classic") || type.equals("Logic"));
+		if (type.equals("Classic")) {
+			for (int i = 1; i <= 13; i++) {
+				addCard(new Card("C", i));
+				addCard(new Card("D", i));
+				addCard(new Card("H", i));
+				addCard(new Card("S", i));
+			}
+		}
+		else if (type.equals("Logic")) {
+			for (int i = 1; i <= 12; i++) {
+				addCard(new Card("D", i));
+				addCard(new Card("S", i));
+			}
+		}
+	}
+	
 	/**
 	 * Getter method for ArrayList of Cards in the deck
 	 * @return ArrayList of Cards in deck
@@ -44,13 +68,13 @@ public class Deck {
 	
 	/**
 	 * Gets card information (suit, maybe rank) a player can see
-	 * @param player 0-3, number of player
+	 * @param playerID 0-3, number of player
 	 * @return String with card information that a player can see
 	 */
-	public String printDeck(int player) {
+	public String printDeck(int playerID) {
 		String rep = "";
 		for (Card c : deck) {
-			rep += c.printCard(player) + " ";
+			rep += c.printCard(playerID) + " ";
 		}
 		return rep;
 	}

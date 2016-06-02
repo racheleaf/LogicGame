@@ -43,8 +43,11 @@ public class main {
 			players[i].getHand().sortByRank(); //sort by rank
 		}
 		
+		Card cardtemp = players[2].getHand().getCardAt(4);
+		cardtemp.makeVisible(0);
+		
 		for (int i = 0; i < 4; i++) {
-			System.out.println(players[i].getHand().printDeck(i));
+			System.out.println(players[i].getHand().printDeck(0));
 		}
 		
 		

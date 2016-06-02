@@ -24,8 +24,8 @@ public class Card {
 	 * @param rank an int in the range 1-12. 
 	 */
 	public Card(String suit, int rank) {
-		assert (suit.equals("S") || suit.equals("D"));
-        assert (1 <= rank && rank <= 12); 
+		assert (suit.equals("S") || suit.equals("D") || suit.equals("H") || suit.equals("C"));
+        assert (1 <= rank && rank <= 13); 
 		this.suit = suit;
 		this.rank = rank;
 		show[0] = false;
@@ -36,22 +36,59 @@ public class Card {
 	
 	/**
 	 * Mutator.  Makes a Card visible to a certain player.  
-	 * @param player 0-3, number of player
+	 * @param playerID 0-3, ID of player
 	 */
-	public void makeVisible(int player) {
-		show[player] = true;
+	public void makeVisible(int playerID) {
+		show[playerID] = true;
 	}
 	
 	/**
-	 * Returns the card, as seen by a certain player.  
-	 * @param player must be 0,1,2,3
+	 * Shows if Card is visible to a certain player
+	 * @param playerID 0-3, ID of player
+	 * @return true if the card is visible to player, else false
+	 */
+	public boolean isVisible(int playerID) {
+		return show[playerID];
+	}
+	
+	/**
+	 * Returns the card, as seen by a certain player
+	 * If visible to everyone, returns String containing just suit and rank
+	 * If not visible to player, then only suit is displayed
+	 * If visible to just card owner and card owner's partner, then card String is parenthesized ()
+	 * If visible to just player, then card String is bracketed []
+	 * @param playerID 0-3, ID of player
 	 * @return String containing suit and rank if face up for player, else just the suit
 	 */
-	public String printCard(int player) {
-	    assert(player >= 0 && player <= 3);
-		if (show[player]) {
+	public String printCard(int playerID) {
+	    assert(playerID >= 0 && playerID <= 3);
+	    
+	    int numPlayersVisible = 0;
+	    for (int i = 0; i < 4; i++) {
+	    	if (show[i]) {
+	    		numPlayersVisible++;
+	    	}
+	    }
+	    
+	    //visible to everyone
+		if (numPlayersVisible == 4) {
 			return suit + rank;
 		}
+		
+		//visible to only card owner and card owner's partner
+		if (numPlayersVisible == 2) {
+			if (show[playerID]) {
+				return "(" + suit + rank + ")";
+			}
+			return "(" + suit + ")";
+		}
+		
+		//visible to only player
+		if (show[playerID]) {
+			return "[" + suit + rank + "]";
+		}
+		
+		//not visible to anyone but card owner (who's not player)
 		return suit;
 	}
 	
