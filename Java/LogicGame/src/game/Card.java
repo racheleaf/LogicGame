@@ -34,24 +34,12 @@ public class Card {
 		show[3] = false;
 	}
 	
-	/*
-	 * TODO is there a reason this method is boolean and allows inputs other than 
-	 * 0,1,2,3? To be consistent with printCard would it be better to make it void, 
-	 * document a precondition that player must be 0,1,2,3, and leave it up to whatever's
-	 * calling this method to enforce that player is 0,1,2,3? -Brice  
-	 */
 	/**
 	 * Mutator.  Makes a Card visible to a certain player.  
-	 * @param player, an integer. 
-	 * @return true if player is 0,1,2,3; else false.  If player is 0,1,2,3, 
-	 * then makes this card visible to player.    
+	 * @param player 0-3, number of player
 	 */
-	public boolean makeVisible(int player) {
-		if (player < 0 || player >= 4) {
-			return false;
-		}
+	public void makeVisible(int player) {
 		show[player] = true;
-		return true;
 	}
 	
 	/**

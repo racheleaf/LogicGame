@@ -10,39 +10,42 @@ public class Deck {
 		
 	}
 	
-	/*
-	 * d = ArrayList of Cards, equal to deck
+	/**
+	 * Create deck from ArrayList of Cards
+	 * @param d ArrayList of Cards, ArrayList containing Cards in deck
 	 */
 	public Deck(ArrayList<Card> d) {
 		deck = d;
 	}
 	
-	/* 
-	 * returns ArrayList of cards in deck
+	/**
+	 * Getter method for ArrayList of Cards in the deck
+	 * @return ArrayList of Cards in deck
 	 */
 	public ArrayList<Card> getDeck() {
 		return deck;
 	}
 	
-	/*
-	 * c = Card to be added to deck
-	 * returns true once c is added
+	/**
+	 * Adds Card to deck
+	 * @param c Card to be added to deck
 	 */
-	public boolean addCard(Card c) {
+	public void addCard(Card c) {
 		deck.add(c);
-		return true;
 	}
 	
-	/*
-	 * c = Card to be removed from deck
-	 * returns true if c exists in deck and has been removed
+	/**
+	 * Removes Card from deck
+	 * @param c Card to be removed from deck
 	 */
 	public boolean removeCard(Card c) {
 		return deck.remove(c);
 	}
 	
-	/*
-	 * returns String containing the cards a player can see
+	/**
+	 * Gets card information (suit, maybe rank) a player can see
+	 * @param player 0-3, number of player
+	 * @return String with card information that a player can see
 	 */
 	public String printDeck(int player) {
 		String rep = "";
@@ -52,42 +55,42 @@ public class Deck {
 		return rep;
 	}
 	
-	/*
-	 * returns size of deck
+	/**
+	 * Gets the number of cards in the deck
+	 * @return size of deck
 	 */
 	public int size() {
 		return deck.size();
 	}
 	
-	/*
-	 * h = ArrayList of hands
-	 * deals cards in deck to each of the hands in h (shuffle prior to dealing if want randomized)
-	 * returns true if h.size() > 0 and when done
+	/**
+	 * Deals cards in deck to hands (shuffle first if want randomized)
+	 * @param h ArrayList of hands, to which cards from the deck are going be dealt
 	 */
-	public boolean deal(ArrayList<Hand> h) {
-		if (h.size() == 0) {
-			return false;
+	public void deal(ArrayList<Hand> h) {
+		try {
+			int sizeOfDeck = size(); // sizeOfDeck = number of cards in deck
+			int numDecks = h.size(); // numDecks = number of decks dealing to
+			for (int i = 0; i < sizeOfDeck; i++) {
+				h.get(i%numDecks).addCard(deck.get(i));
+			}
 		}
-		int sizeOfDeck = size(); // sizeOfDeck = number of cards in deck
-		int numDecks = h.size(); // numDecks = number of decks dealing to
-		for (int i = 0; i < sizeOfDeck; i++) {
-			h.get(i%numDecks).addCard(deck.get(i));
+		catch (IndexOutOfBoundsException e){
+			throw new RuntimeException(e);
 		}
-		return true;
 	}
 	
-	/*
-	 * randomizes deck
+	/**
+	 * Randomizes/shuffles deck
 	 */
-	public boolean shuffle() {
+	public void shuffle() {
 		Collections.shuffle(deck);
-		return true;
 	}
 	
-	/*
-	 * sorts deck by rank (min to max)
+	/**
+	 * Sorts deck by rank (min to max)
 	 */
-	public boolean sortByRank() {
+	public void sortByRank() {
 		ArrayList<Card> newDeck = new ArrayList<Card>();
 		while (deck.size() > 0) {
 			Card card = minCard(deck);
@@ -95,12 +98,12 @@ public class Deck {
 			deck.remove(card);
 		}
 		deck = newDeck;
-		return true;
 	}
 	
-	/*
-	 * tempDeck = ArrayList of Cards
-	 * returns index of card of lowest rank in tempDeck
+	/**
+	 * Finds index of lowest ranked card in deck
+	 * @param tempDeck ArrayList of Cards
+	 * @return index of card of lowest rank in tempDeck
 	 */
 	private Card minCard(ArrayList<Card> tempDeck) {
 		Card card = tempDeck.get(0);

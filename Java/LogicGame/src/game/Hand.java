@@ -10,30 +10,36 @@ public class Hand extends Deck {
 		
 	}
 	
-	/*
-	 * d = ArrayList of Cards, equal to deck
+	/**
+	 * Creates new Hand of Cards
+	 * @param d ArrayList of Cards in hand
 	 */
 	public Hand(ArrayList<Card> d) {
 		deck = d;
 	}
 	
-	/*
-	 * o = hand's owner
+	/**
+	 * Makes new Hand based on Hand's owner
+	 * @param o Player, owner of hand
 	 */
 	public Hand(Player o) {
 		owner = o;
 	}
 	
-	/*
-	 * returns owner
+	/**
+	 * Getter method for the Player who holds the hand
+	 * @return owner, Player who owns the hand
 	 */
 	public Player getOwner() {
 		return owner;
 	}
 	
-	public boolean setOwner(Player o) {
+	/**
+	 * Sets the owner of the hand to a Player
+	 * @param o the Player who will own the hand
+	 */
+	public void setOwner(Player o) {
 		owner = o;
-		return true;
 	}
 	
 	

@@ -1,6 +1,6 @@
 package game;
 
-import java.util.List;
+import java.util.*;
 
 public class GameBoard {
     
@@ -10,7 +10,8 @@ public class GameBoard {
      * Creates a gameboard
      */
     public GameBoard(){
-        throw new RuntimeException("Unimplemented");
+    	hands = new ArrayList<Hand>();
+    	//throw new RuntimeException("Unimplemented");
     }
     
     /********************************
