@@ -1,0 +1,22 @@
+
+Pl0  Pl1  Pl2  Pl3    Users
+ |    |    |    | 
+ |    |    |    | 
+ |    |    |    | 
+CH0  CH1  CH2  CH3    ClientHandlerThread (Interfaces
+ \    |    |    /     with users)
+  \   \    /   /  
+   \   |  |   /   
+    \  \  /  /    
+     \ |  | /     
+      \ \/ /      
+       \||/       
+      SERVER          LogicServer (Coordinates client
+        ||            handlers, parses inputs,       
+        ||            retrieves gamestate data)
+        ||        
+   STATE CONTROL      GameBoard (Maintains gamestate)
+        ||        
+        ||        
+        ||        
+    GAMESTATE         Deck/Hand/Card
