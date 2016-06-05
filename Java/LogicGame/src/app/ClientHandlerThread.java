@@ -23,7 +23,7 @@ public class ClientHandlerThread implements Runnable{
     // Controls communication to/from server
     private final BlockingQueue<String> fromMaster;
     private final BlockingQueue<String> toMaster;
-    
+        
     /**
      * Constructs a ClientServerThread
      * @param socket Socket through which client connects
@@ -108,7 +108,7 @@ public class ClientHandlerThread implements Runnable{
             // phase while clients are connecting
             // all threads go to sleep until the main server thread begins the game
             // by calling threadControls[playerID].notify()
-            informMaster("Ready.");
+            informMaster("Ready for setup.");
 
             String message = listenMaster();
             assert(message.equals("Game started, proceed."));
@@ -128,18 +128,36 @@ public class ClientHandlerThread implements Runnable{
             for (String line = in.readLine(); line != null; line = in.readLine()) {
                 // Client handler sends request to server and receives response
                 informMaster(line);
-                String output = listenMaster();
-                if (output.equals("done")){
+                if (line.equals("done")){
                     out.println("Yay! Wait for other players to finish setup...");
                     break;
                 }
+                String output = listenMaster();
                 if (output != null){
                     out.println(output);
                 }
             }
             
-            /*TODO main phase of game*/
+            message = listenMaster();
+            assert(message.equals("Setup is complete.  Game has begun!"));
+            out.println("Setup is complete.  Game has begun!");
 
+            new Thread(new Runnable(){
+                public void run(){
+                    while (true){
+                        try {
+                            out.println(listenMaster());
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }                        
+                    }
+                }
+            }).start();
+            
+            for (String line = in.readLine(); line != null; line = in.readLine()) {
+                informMaster(line);
+            }
+            
         } finally {
             out.close();
             in.close();

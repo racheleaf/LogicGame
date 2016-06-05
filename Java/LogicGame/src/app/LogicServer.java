@@ -46,6 +46,7 @@ public class LogicServer {
     
     private final LinkedBlockingQueue<String> fromHandlers = new LinkedBlockingQueue<>();
     
+    private final List<String> status = Arrays.asList("Inactive","Inactive","Inactive","Inactive");
     
     /**
      * Make a LogicServer that listens for connections on a specified port.   
@@ -141,7 +142,7 @@ public class LogicServer {
             thread.start();
             
             String message = listenClients();
-            assert(message.matches("Client [0-3]: Ready."));
+            assert(message.matches("Client [0-3]: Ready for setup."));
             numPlayers++;
         }
         
@@ -165,18 +166,46 @@ public class LogicServer {
             
             int senderID = getSenderID(line);
             String message = getMessageText(line);
-            String output = handleRequestSetupPhase(message, senderID);
-            if (output.equals("done")){
+            if (message.equals("done")){
                 isDone.add(senderID);
                 if (isDone.equals(players)){
                     break;
                 }
             }
-            if (output!= null){
-                informClient(senderID, output);
+            else{
+                handleRequestSetupPhase(message, senderID);                
             }
-
         }
+
+        // MAIN PHASE
+        
+        informAllClients("Setup is complete.  Game has begun!");
+        
+        for (int playerID=0; playerID<4; playerID++){
+            informClient(playerID, 
+                    gameBoard.showPlayerViewOfBoard(playerID));
+        }
+        
+        status.set(2, "Pass");
+        informAllClients("Player 2 to pass.");
+        
+        // this loop continues until someone declares
+        for (String line = listenClients(); line!=null; line = listenClients()){
+            
+            int senderID = getSenderID(line);
+            String message = getMessageText(line);
+            
+            if (message.equals("declare")){
+                informAllClients("Player " + senderID + " declared!");
+                // DO STUFF HERE
+                break;
+            }
+            
+            handleRequestMainPhase(message, senderID);
+        }
+        
+        
+
     }
     
 
@@ -190,27 +219,25 @@ public class LogicServer {
      * input was help, returns a help message; if input was done, returns "done,"
      * which gets processed by the connection handler.  Any other inputs are 
      * diregarded and return a help message.  
+     * @throws InterruptedException 
      */
-    private String handleRequestSetupPhase(String in, int playerID){
-        String regex = "(view)|(help)|(done)|(swap [0-5])";
+    private void handleRequestSetupPhase(String in, int playerID) throws InterruptedException{
+        String regex = "(view)|(help)|(swap [0-5])";
         String helpMessage = "same";//TODO
         if (!in.matches(regex)){
             // invalid input
-            return helpMessage;
+            informClient(playerID, helpMessage);
         }
         else if(in.equals("view")){
-            return gameBoard.showPlayerOwnCards(playerID);
+            informClient(playerID, gameBoard.showPlayerOwnCards(playerID));
         }
         else if(in.equals("help")){
-            return helpMessage;
-        }
-        else if(in.equals("done")){
-            return "done";
+            informClient(playerID, helpMessage);
         }
         else if(in.matches("swap [0-5]")){
             Integer position = Character.getNumericValue(in.charAt(5));
             gameBoard.swapTwoEqualCards(playerID, position);
-            return gameBoard.showPlayerOwnCards(playerID);
+            informClient(playerID, gameBoard.showPlayerOwnCards(playerID));
         }
         else{
             // should not get here
@@ -221,11 +248,104 @@ public class LogicServer {
     /**
      * Handler for client input in the main game phase
      * @param in client message.   
+     * @param playerID 0-3
+     * @param playerState "Inactive", "Pass", "Guess", or "Show"
      * @return message to client, or null
+     * @throws InterruptedException 
      */
-    private String handleRequestMainPhase(String in, int playerID){
-        //TODO
-         throw new RuntimeException("Unimplemented");
+    private void handleRequestMainPhase(String in, int playerID) throws InterruptedException{
+        String playerState = status.get(playerID);
+        
+        String regex = "(view)|(help)|(pass [0-5])|(guess [0-3] [0-5] [1-12])|(show [0-5])";
+        String helpMessage = "same";//TODO
+        
+        if (!in.matches(regex)){
+            // invalid input
+            informClient(playerID, helpMessage);
+        }
+        else if (in.equals("view")){
+            informClient(playerID, gameBoard.showPlayerViewOfBoard(playerID));
+        }
+        else if (in.equals("help")){
+            informClient(playerID, helpMessage);
+        }
+        else if (in.matches("pass [0-5]")){
+            if (!playerState.equals("Pass")){
+                informClient(playerID, "Your state is: "+playerState+
+                        ". You cannot pass right now.");
+            }
+            else{
+                // TODO enforce: this card cannot be already faceup
+                Integer position = Character.getNumericValue(in.charAt(5));
+                gameBoard.revealCardToPartner(playerID, position);
+                informAllClients("Player " + playerID + " passed card " + position + "!");
+                for (int player=0; player<4; player++){
+                    informClient(player, gameBoard.showPlayerViewOfBoard(player));
+                }
+                status.set(playerID, "Inactive");
+                int partnerID = (playerID+2)%4;
+                informAllClients("Player " + partnerID + " to guess!");
+                status.set(partnerID, "Guess");
+            }
+        }
+        else if (in.matches("guess [0-3] [0-5] [1-12]")){
+            if (!playerState.equals("Guess")){
+                informClient(playerID, "Your state is: "+playerState+
+                        ". You cannot guess right now.");
+            }     
+            else{
+                // TODO enforce: player cannot guess unguessable card
+                String[] tokenizedInput = in.split(" ");
+                int targetPlayer = Integer.valueOf(tokenizedInput[1]);
+                int guessPosition = Integer.valueOf(tokenizedInput[2]);
+                int guessRank = Integer.valueOf(tokenizedInput[3]);
+                boolean guessCorrect = gameBoard.guess(playerID, targetPlayer, 
+                        guessPosition, guessRank);
+                if (guessCorrect){
+                    informAllClients("Player " + playerID + " correctly guessed card "+
+                            guessPosition + " of player " + targetPlayer+": " + guessRank + "!");
+                    gameBoard.revealCardToAll(targetPlayer, guessPosition);
+                    for (int player=0; player<4; player++){
+                        informClient(player, gameBoard.showPlayerViewOfBoard(player));
+                    }
+                    status.set(playerID, "Inactive");
+                    int nextPlayerID = (playerID+3)%4;
+                    informAllClients("Player " + nextPlayerID + " to pass!");
+                    status.set(nextPlayerID, "Pass");
+                }
+                else{
+                    informAllClients("Player " + playerID + " incorrectly guessed card "+
+                            guessPosition + " of player " + targetPlayer+": " + guessRank + "!");
+                    for (int player=0; player<4; player++){
+                        informClient(player, gameBoard.showPlayerViewOfBoard(player));
+                    }
+                    status.set(playerID, "Show");
+                    informAllClients("Player " + playerID + " must show a card!");
+                }
+            }
+        }
+        else if (in.matches("show [0-5]")){
+            if (!playerState.equals("Show")){
+                informClient(playerID, "Your state is: "+playerState+
+                        ". You cannot show right now.");
+            }            
+            else{
+                // TODO enforce: this card cannot be already faceup
+                Integer position = Character.getNumericValue(in.charAt(5));
+                gameBoard.revealCardToAll(playerID, position);
+                informAllClients("Player " + playerID + " revealed card " + position + "!");
+                for (int player=0; player<4; player++){
+                    informClient(player, gameBoard.showPlayerViewOfBoard(player));
+                }
+                status.set(playerID, "Inactive");
+                int nextPlayerID = (playerID+3)%4;
+                informAllClients("Player " + nextPlayerID + " to pass!");
+                status.set(nextPlayerID, "Pass");
+            }
+        }
+        else{
+            throw new UnsupportedOperationException("Should not get here");            
+        }
     }
     
     /**
@@ -256,59 +376,3 @@ public class LogicServer {
     }
 
 }
-
-///**
-//* Handle a single client connection. Returns when client disconnects.
-//* 
-//* @param socket socket where the client is connected
-//* @param playerID 0-3 ID of player
-//* @throws IOException if the connection encounters an error or terminates unexpectedly
-//*/
-//private void handleConnection(Socket socket, int playerID) throws IOException {
-// // I/O streams from player
-// BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-// PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-// 
-// try {
-//     out.println("Welcome to Logic! You are player #" + playerID + ".");
-//     out.println("Please wait for four players to arrive.");
-//
-//     // phase while clients are connecting
-//     // all threads go to sleep until the main server thread begins the game
-//     // by calling threadControls[playerID].notify()
-//     synchronized(threadControls[playerID]){
-//         try{
-//             threadControls[playerID].wait();
-//         } catch (InterruptedException e){
-//             e.printStackTrace();
-//         }
-//     }
-//     
-//     out.println("Game has begun! Please set up your cards.");
-//     out.println(gameBoard.showPlayerOwnCards(playerID));
-//     
-//     // setup phase: clients are shown only their own cards, and can request
-//     // swaps of adjacent cards.  
-//
-//     // this loop continues until client enters "done" 
-//     for (String line = in.readLine(); line != null; line = in.readLine()) {
-//         // server reads client's input, performs the necessary computations,
-//         // and returns a message
-//         String output = handleRequestSetupPhase(line, playerID);
-//         if (output.equals("done")){
-//             out.println("Yay! Wait for other players to finish setup...");
-//             break;
-//         }
-//         if (output != null){
-//             out.println(output);
-//         }
-//     }
-//     
-//     /*TODO main phase of game*/
-//
-// } finally {
-//     out.close();
-//     in.close();
-// }
-//}
-
