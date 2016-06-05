@@ -137,7 +137,7 @@ public class GameBoard {
     	for (int viewPlayer = 0; viewPlayer < 4; viewPlayer++) {
     		rep += viewPlayer + "\t";
     		rep += hands.get(viewPlayer).printDeck(playerID);
-    		rep += "\n";
+    		rep += "\r\n";
     	}
     	return rep;
     }
