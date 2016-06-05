@@ -21,28 +21,28 @@ public class ClientHandlerThread implements Runnable{
     private final Socket socket;
     
     // Controls communication to/from server
-    private final BlockingQueue<String> fromMaster;
-    private final BlockingQueue<String> toMaster;
+    private final BlockingQueue<String> fromServer;
+    private final BlockingQueue<String> toServer;
         
     /**
      * Constructs a ClientServerThread
      * @param socket Socket through which client connects
      * @param playerID number of player (0-3)
-     * @param fromMaster BlockingQueue of messages from 
+     * @param fromServer BlockingQueue of messages from 
      * the server; ONLY this ClientHandlerThread should 
      * read from this BlockingQueue, and ONLY the server 
      * should write to it 
-     * @param toMaster BlockingQueue of messages to the 
+     * @param toServer BlockingQueue of messages to the 
      * server; All four ClientHandlerThreads should write
      * to this BlockingQueue, and ONLY the server should 
      * read from it.  
      */
     public ClientHandlerThread(Socket socket, int playerID, 
-            BlockingQueue<String> fromMaster, BlockingQueue<String>toMaster){
+            BlockingQueue<String> fromServer, BlockingQueue<String>toServer){
         this.socket = socket;
         this.playerID = playerID;
-        this.fromMaster = fromMaster;
-        this.toMaster = toMaster;
+        this.fromServer = fromServer;
+        this.toServer = toServer;
     }
     
     /**
@@ -52,8 +52,8 @@ public class ClientHandlerThread implements Runnable{
      * written in an appropriate protocol 
      * @throws InterruptedException
      */
-    private void informMaster(String message) throws InterruptedException{
-        toMaster.put("Client " + playerID + ": " + message);
+    private void informSever(String message) throws InterruptedException{
+        toServer.put("Client " + playerID + ": " + message);
     }
 
     /**
@@ -62,9 +62,9 @@ public class ClientHandlerThread implements Runnable{
      * @return message from server
      * @throws InterruptedException
      */
-    private String listenMaster() throws InterruptedException{
-        String message = fromMaster.take();
-        System.err.println("Received by Client " + playerID + ": " + message);
+    private String listenServer() throws InterruptedException{
+        String message = fromServer.take();
+        System.err.println("Received by Client " + playerID + ": \n" + message);
         return message;
     }
 
@@ -108,45 +108,51 @@ public class ClientHandlerThread implements Runnable{
             // phase while clients are connecting
             // all threads go to sleep until the main server thread begins the game
             // by calling threadControls[playerID].notify()
-            informMaster("Ready for setup.");
+            informSever("Ready for setup.");
 
-            String message = listenMaster();
+            String message = listenServer();
             assert(message.equals("Game started, proceed."));
             
-            out.println("Game has begun! Please set up your cards.");
+            out.println("Please set up your cards.");
             
             // SETUP PHASE
             
             // show each player own cards
-            String cardLayout = listenMaster();
+            String cardLayout = listenServer();
             out.println(cardLayout);
             
+            String instructions = listenServer();
+            out.println(instructions);
             // clients are shown only their own cards, and can request
             // swaps of adjacent cards.  
             
             // this loop continues until client enters "done" 
             for (String line = in.readLine(); line != null; line = in.readLine()) {
                 // Client handler sends request to server and receives response
-                informMaster(line);
+                informSever(line);
                 if (line.equals("done")){
                     out.println("Yay! Wait for other players to finish setup...");
                     break;
                 }
-                String output = listenMaster();
+                String output = listenServer();
                 if (output != null){
                     out.println(output);
                 }
             }
             
-            message = listenMaster();
+            message = listenServer();
             assert(message.equals("Setup is complete.  Game has begun!"));
-            out.println("Setup is complete.  Game has begun!");
+            out.println(message);
 
+            // from here on, receiving messages from main server
+            // and sending requests to main server happens 
+            // asynchronously, so all clients receive updates
+            // from server real-time
             new Thread(new Runnable(){
                 public void run(){
                     while (true){
                         try {
-                            out.println(listenMaster());
+                            out.println(listenServer());
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }                        
@@ -154,8 +160,9 @@ public class ClientHandlerThread implements Runnable{
                 }
             }).start();
             
+            
             for (String line = in.readLine(); line != null; line = in.readLine()) {
-                informMaster(line);
+                informSever(line);
             }
             
         } finally {
