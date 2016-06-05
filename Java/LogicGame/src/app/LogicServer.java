@@ -1,11 +1,14 @@
 package app;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import game.GameBoard;
 
@@ -34,25 +37,15 @@ public class LogicServer {
     // approprgate instructions / retrieves the appropriate information from
     // gameBoard
     private final GameBoard gameBoard = new GameBoard();
+        
+    private final List<BlockingQueue<String>> toHandlers = Arrays.asList(
+            new LinkedBlockingQueue<>(), 
+            new LinkedBlockingQueue<>(), 
+            new LinkedBlockingQueue<>(), 
+            new LinkedBlockingQueue<>());
     
-    // player counter, used in the initial phase while players are connecting.  
-    // when 4 players arrive the game starts 
-    private int numPlayers = 0;
+    private final LinkedBlockingQueue<String> fromHandlers = new LinkedBlockingQueue<>();
     
-    // since clients work asynchronously we use a different thread to handle
-    // each client.  This array provides a reference to these threads
-    private final Thread[] clientThreads = new Thread[4];
-    
-    // Sometimes a player's thread has to "wait" - e.g. when it isn't his turn.  
-    // This is achieved by the .wait() function - for any object obj, if a thread
-    // calls obj.wait() it goes to sleep until another thread calls obj.notify().
-    // obj serves as the thread's "lock"
-    // 
-    // Here, basically player x's handler thread calls threadControls[x].wait when 
-    // he has to wait, and the master server thread calls threadControls[x].notify 
-    // when player x should stop waiting
-    /* TODO this is jank */
-    private final Object[] threadControls = {new Object(), new Object(), new Object(), new Object()}; 
     
     /**
      * Make a LogicServer that listens for connections on a specified port.   
@@ -64,15 +57,76 @@ public class LogicServer {
         serverSocket = new ServerSocket(port);
     }
     
+    
+    /**
+     * Sends a client a message
+     * @param clientID ID of client (0-3)
+     * @param message message to be sent, in an appropriate
+     * protocol
+     * @throws InterruptedException 
+     */
+    private void informClient(int clientID, String message) throws InterruptedException{
+        toHandlers.get(clientID).put(message);
+    }
+
+    /**
+     * Sends all clients a message
+     * @param message message to be sent, in an appropriate 
+     * protocol
+     * @throws InterruptedException
+     */
+    private void informAllClients(String message) throws InterruptedException{
+        for (BlockingQueue<String> channel : toHandlers){
+            channel.put(message);
+        }
+    }
+    
+    /**
+     * Listens for messages from clients
+     * @return message from client
+     * @throws InterruptedException
+     */
+    private String listenClients() throws InterruptedException{
+        String message = fromHandlers.take();
+        System.err.println("Received by master: " + message);
+        assert(message.substring(0, 10).matches("Client [0-3]: "));
+        return message;
+    }
+    
+    /**
+     * Sender ID of a message from a client 
+     * @param messageFromClient a message sent by a 
+     * ClientHandlerThread's informMaster method
+     * @return ID of sender
+     */
+    private static int getSenderID(String messageFromClient){
+        return Character.getNumericValue(messageFromClient.charAt(7));
+    }
+
+    /**
+     * Content of message from client
+     * @param messageFromClient a message sent by a 
+     * ClientHandlerThread's informMaster method
+     * @return message, without the prepended client ID
+     * information
+     */
+    private static String getMessageText(String messageFromClient){
+        return messageFromClient.substring(10);
+    }
+    
     /**
      * Run the server, listening for client connections and handling them.
      * Never returns unless an exception is thrown.
      * 
      * @throws IOException if the main server socket is broken
      *                     (IOExceptions from individual clients do *not* terminate serve())
+     * @throws InterruptedException 
      */
-    public void serve() throws IOException {
-        /*TODO bug: numPlayers is very very not threadsafe*/
+    public void serve() throws IOException, InterruptedException {
+
+        // CONNECTION PHASE
+        
+        int numPlayers = 0;
         
         // While there are fewer than 4 players, wait for more connections, and
         // when a connection comes make a new thread that handles it
@@ -81,102 +135,50 @@ public class LogicServer {
             Socket socket = serverSocket.accept();
             
             // handle a connection
-            // Basically this creates and starts a new thread that handles the 
-            // connection with a connecting client.  Don't worry about this, this 
-            // is boilerplate code.
-            Thread thread = new Thread(new Runnable(){
-                public void run(){
-                    try {
-                        handleConnection(socket, numPlayers-1);  
-                    } catch (IOException ioe) {
-                        ioe.printStackTrace(); // but don't terminate serve()
-                    } finally {
-                        try {
-                            socket.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }                                    
-                }
-            });
-
-            // Remembers the handler threads
-            
-            clientThreads[numPlayers] = thread;
-            numPlayers++; /*TODO synchronization issues here, this is jank*/
+            Thread thread = new Thread(new ClientHandlerThread(socket, numPlayers, 
+                    toHandlers.get(numPlayers), fromHandlers));                
             
             thread.start();
+            
+            String message = listenClients();
+            assert(message.matches("Client [0-3]: Ready."));
+            numPlayers++;
         }
         
-        // After displaying hello message, handler threads sleep until 
-        // the master server thread begins the game.  
-        // This code wakes up the clients.  
-        for (Object obj: threadControls){
-            synchronized(obj){
-                obj.notify();                
-            }
+        // all players connected!
+        
+        informAllClients("Game started, proceed.");
+        
+        // SETUP PHASE
+        
+        for (int playerID=0; playerID<4; playerID++){
+            informClient(playerID, 
+                    gameBoard.showPlayerOwnCards(playerID));
         }
-        /*TODO bug: last player to enter gets his threadControl object notified before it's put on wait,
-        so he gets put on wait again and gets stuck*/
-
-        /*TODO main phase of game*/
         
-    }
-    
-    /**
-     * Handle a single client connection. Returns when client disconnects.
-     * 
-     * @param socket socket where the client is connected
-     * @param playerID 0-3 ID of player
-     * @throws IOException if the connection encounters an error or terminates unexpectedly
-     */
-    private void handleConnection(Socket socket, int playerID) throws IOException {
-        // I/O streams from player
-        BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+        // tracks which players are done setting up
+        Set<Integer> players = new HashSet<>(Arrays.asList(0,1,2,3));
+        Set<Integer> isDone = new HashSet<>();
         
-        try {
-            out.println("Welcome to Logic! You are player #" + playerID + ".");
-            out.println("Please wait for four players to arrive.");
-
-            // phase while clients are connecting
-            // all threads go to sleep until the main server thread begins the game
-            // by calling threadControls[playerID].notify()
-            synchronized(threadControls[playerID]){
-                try{
-                    threadControls[playerID].wait();
-                } catch (InterruptedException e){
-                    e.printStackTrace();
-                }
-            }
+        // this loop continues until all clients are done
+        for (String line = listenClients(); line!=null; line = listenClients()){
             
-            out.println("Game has begun! Please set up your cards.");
-            out.println(gameBoard.showPlayerOwnCards(playerID));
-            
-            // setup phase: clients are shown only their own cards, and can request
-            // swaps of adjacent cards.  
-
-            // this loop continues until client enters "done" 
-            for (String line = in.readLine(); line != null; line = in.readLine()) {
-                // server reads client's input, performs the necessary computations,
-                // and returns a message
-                String output = handleRequestSetupPhase(line, playerID);
-                if (output.equals("done")){
-                    out.println("Yay! Wait for other players to finish setup...");
+            int senderID = getSenderID(line);
+            String message = getMessageText(line);
+            String output = handleRequestSetupPhase(message, senderID);
+            if (output.equals("done")){
+                isDone.add(senderID);
+                if (isDone.equals(players)){
                     break;
                 }
-                if (output != null){
-                    out.println(output);
-                }
             }
-            
-            /*TODO main phase of game*/
+            if (output!= null){
+                informClient(senderID, output);
+            }
 
-        } finally {
-            out.close();
-            in.close();
         }
     }
+    
 
     /**
      * Handler for client input in the setup phase. 
@@ -218,7 +220,7 @@ public class LogicServer {
     
     /**
      * Handler for client input in the main game phase
-     * @param in client message.  Should be of form "swap [position]", "view", "help", or "done".  
+     * @param in client message.   
      * @return message to client, or null
      */
     private String handleRequestMainPhase(String in, int playerID){
@@ -236,6 +238,8 @@ public class LogicServer {
             runLogicServer(DEFAULT_PORT);
         } catch (IOException e){
             throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
     
@@ -243,11 +247,68 @@ public class LogicServer {
      * Starts a Logic Server 
      * @param port the port at which this LogicServer listens
      * @throws IOException
+     * @throws InterruptedException 
      */
-    private static void runLogicServer(int port) throws IOException{
+    private static void runLogicServer(int port) throws IOException, InterruptedException{
         LogicServer server = new LogicServer(port);
         // starts the main server thread
         server.serve();
     }
 
 }
+
+///**
+//* Handle a single client connection. Returns when client disconnects.
+//* 
+//* @param socket socket where the client is connected
+//* @param playerID 0-3 ID of player
+//* @throws IOException if the connection encounters an error or terminates unexpectedly
+//*/
+//private void handleConnection(Socket socket, int playerID) throws IOException {
+// // I/O streams from player
+// BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+// PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+// 
+// try {
+//     out.println("Welcome to Logic! You are player #" + playerID + ".");
+//     out.println("Please wait for four players to arrive.");
+//
+//     // phase while clients are connecting
+//     // all threads go to sleep until the main server thread begins the game
+//     // by calling threadControls[playerID].notify()
+//     synchronized(threadControls[playerID]){
+//         try{
+//             threadControls[playerID].wait();
+//         } catch (InterruptedException e){
+//             e.printStackTrace();
+//         }
+//     }
+//     
+//     out.println("Game has begun! Please set up your cards.");
+//     out.println(gameBoard.showPlayerOwnCards(playerID));
+//     
+//     // setup phase: clients are shown only their own cards, and can request
+//     // swaps of adjacent cards.  
+//
+//     // this loop continues until client enters "done" 
+//     for (String line = in.readLine(); line != null; line = in.readLine()) {
+//         // server reads client's input, performs the necessary computations,
+//         // and returns a message
+//         String output = handleRequestSetupPhase(line, playerID);
+//         if (output.equals("done")){
+//             out.println("Yay! Wait for other players to finish setup...");
+//             break;
+//         }
+//         if (output != null){
+//             out.println(output);
+//         }
+//     }
+//     
+//     /*TODO main phase of game*/
+//
+// } finally {
+//     out.close();
+//     in.close();
+// }
+//}
+
