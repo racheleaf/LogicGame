@@ -52,7 +52,7 @@ public class ClientHandlerThread implements Runnable{
      * written in an appropriate protocol 
      * @throws InterruptedException
      */
-    private void informSever(String message) throws InterruptedException{
+    private void informServer(String message) throws InterruptedException{
         toServer.put("Client " + playerID + ": " + message);
     }
 
@@ -108,7 +108,7 @@ public class ClientHandlerThread implements Runnable{
             // phase while clients are connecting
             // all threads go to sleep until the main server thread begins the game
             // by calling threadControls[playerID].notify()
-            informSever("Ready for setup.");
+            informServer("Ready for setup.");
 
             String message = listenServer();
             assert(message.equals("Game started, proceed."));
@@ -129,7 +129,7 @@ public class ClientHandlerThread implements Runnable{
             // this loop continues until client enters "done" 
             for (String line = in.readLine(); line != null; line = in.readLine()) {
                 // Client handler sends request to server and receives response
-                informSever(line);
+                informServer(line);
                 if (line.equals("done")){
                     out.println("Yay! Wait for other players to finish setup...");
                     break;
@@ -162,7 +162,7 @@ public class ClientHandlerThread implements Runnable{
             
             
             for (String line = in.readLine(); line != null; line = in.readLine()) {
-                informSever(line);
+                informServer(line);
             }
             
         } finally {

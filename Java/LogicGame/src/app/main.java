@@ -15,15 +15,10 @@ public class main {
 			deck.addCard(new Card("D", i));
 		}
 		
-		/*
-		 * create four players with numbers 0,1,2,3 with their hands
-		 */
-		Player[] players = new Player[4];
+		
 		ArrayList<Hand> hands = new ArrayList<Hand>();
 		for (int i = 0; i < 4; i++) {
-			players[i] = new Player(i);
-			players[i].setHand(new Hand(players[i])); // give each player a hand 
-			hands.add(players[i].getHand());
+			hands.add(new Hand());
 		}
 		
 		/*
@@ -37,17 +32,17 @@ public class main {
 		 * also sorts each player's cards by rank
 		 */
 		for (int i = 0; i < 4; i++) {
-			for (Card c : players[i].getHand().getDeck()) { // for Card c in player i's hand's ArrayList of cards
+			for (Card c : hands.get(i).getDeck()) { // for Card c in player i's hand's ArrayList of cards
 				c.makeVisible(i);
 			}
-			players[i].getHand().sortByRank(); //sort by rank
+			hands.get(i).sortByRank(); //sort by rank
 		}
 		
-		Card cardtemp = players[2].getHand().getCardAt(4);
+		Card cardtemp = hands.get(2).getCardAt(4);
 		cardtemp.makeVisible(0);
 		
 		for (int i = 0; i < 4; i++) {
-			System.out.println(players[i].getHand().printDeck(0));
+			System.out.println(hands.get(i).printDeck(0));
 		}
 		
 		
