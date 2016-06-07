@@ -147,6 +147,48 @@ public class GameBoard {
      ********************************/
 
     //TODO should declarations be all cards at once or one card at a time? 
+    
+    /**
+     * Makes all cards visible to player visible to everyone
+     * @param playerID int 0-3, ID of player declaring cards
+     */
+    public void makePlayerGameViewPublic(int playerID) {
+    	for (int p = 0; p < 4; p++) {
+    		for (int i = 0; i < 6; i++) {
+    			if (hands.get(p).getCardAt(i).isVisible(playerID)) {
+    				revealCardToAll(p, i);
+    			}
+    		}
+    	}
+    }
+    
+    /**
+     * Makes all cards visible to all players. To be used at end of game.
+     */
+    public void makeAllCardsPublic() {
+    	for (int p = 0; p < 4; p++) {
+    		for (int i = 0; i < 6; i++) {
+    			revealCardToAll(p, i);
+    		}
+    	}
+    }
+    
+    /**
+     * Returns true if player has more to declare, or false if player has finished
+     * @return true if there are still cards undeclared (invisible to players)
+     */
+    public boolean isMoreToDeclare() {
+    	for (int p = 0; p < 4; p++) {
+    		for (int i = 0; i < 6; i++) {
+    			// selects random player (0) to check if card is visible to
+    			if (!hands.get(p).getCardAt(i).isVisible(0)) {
+    				return true;
+    			}
+    		}
+    	}
+    	return false;
+    }
+    
     /**
      * Returns true if declaration is correct
      * @param declaredHands four hands, the values the player guesses

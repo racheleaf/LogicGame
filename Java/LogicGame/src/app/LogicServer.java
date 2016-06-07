@@ -61,6 +61,7 @@ public class LogicServer {
     // Pass: player's turn to pass
     // Guess: player's turn to guess
     // Show: player has to reveal a card
+    // Declare: player is declaring all cards
     // IMPORTANT: to avoid situations where two players can potentially (for a
     // short period of time) both be non-Inactive, when updating turns we always 
     // change the currently-Pass/Guess/Show player to Inactive before changing the 
@@ -155,6 +156,9 @@ public class LogicServer {
      * @throws InterruptedException 
      */
     public void serve() throws IOException, InterruptedException {
+    	
+    	// ID of player who declares, to be set when declaration occurs
+    	int declarer = -1;
 
         // CONNECTION PHASE
         
@@ -242,12 +246,49 @@ public class LogicServer {
             String message = getMessageText(line);
             
             if (message.equals("declare")){
-                informAllClients("Player " + senderID + " declared!");
-                // DO STUFF HERE
+                informAllClients("Player " + senderID + " is declaring!");
+                
+                // changes all other players to Anactive mode, and marks declarer in state Declare 
+                for (int i = 0; i < 4; i++) {
+                	status.set(i, "Inactive");
+                }
+                status.set(senderID, "Declare");
+                declarer = senderID;
+                
+                // refreshes board view so that all cards that declarer can see are visible to everyone
+                gameBoard.makePlayerGameViewPublic(declarer);
+                refreshAllClientsViews();
                 break;
             }
             
             handleRequestMainPhase(message, senderID);
+        }
+        
+        // DECLARATION PHASE
+        
+        for (String line = listenClients(); line != null; line = listenClients()) {
+        	// parse requests
+        	int senderID = getSenderID(line);
+        	String message = getMessageText(line);
+        	
+        	// shouldContinue is false only if declarer declares wrong
+        	boolean shouldContinue = handleRequestDeclarationPhase(message, senderID);
+        	
+        	// if declarer declares wrong, declarer and partner lose
+        	if (!shouldContinue) {
+        		gameBoard.makeAllCardsPublic();
+        		informAllClients("Here is a view of all players' cards:");
+        		refreshAllClientsViews();
+        		informAllClients("Players " + ((declarer+1)%4) + " and " + ((declarer+3)%4) + " lose!");
+        		break;
+        	}
+        	
+        	// if all cards have been declared correctly, declarer and partner win
+        	if (!gameBoard.isMoreToDeclare()) {
+        		informAllClients("Player " + declarer + " has declared all cards correctly." 
+        				+ " Players " + declarer + " and " + ((declarer+2)%4) + " win!");
+        		break;
+        	}
         }
         
     }
@@ -422,9 +463,77 @@ public class LogicServer {
                 status.set(nextPlayerID, "Pass");
             }
         }
-        else if (in.matches("declare")) {
-        	
+        else{
+            throw new UnsupportedOperationException("Should not get here");            
         }
+    }
+    
+    /**
+     * Handler for client input in declaration phase
+     * @param in client message
+     * @param playerID 0-3
+     * @return true if player did not declare wrong, false if player declares wrong
+     * @throws InterruptedException
+     */
+    private boolean handleRequestDeclarationPhase(String in, int playerID) throws InterruptedException {
+    	String playerState = status.get(playerID);
+    	String regex = "(view)|(help)|(declare [0-3] [0-5] ([1-9]|1[0-2]))";
+        String helpMessage = "Type 'view' to see your cards, "
+                + "'help' for help message, "
+                + "'pass x' to pass card x, " 
+                + "'declare x y z' to declare card y of player x is z, if it is your turn to declare.";
+        
+        if (!in.matches(regex)){
+            // invalid input
+            // discard input and return help message
+            informClient(playerID, helpMessage);
+            return true;
+        }
+        else if (in.equals("view")){
+            informClient(playerID, gameBoard.showPlayerViewOfBoard(playerID));
+            return true;
+        }
+        else if (in.equals("help")){
+            informClient(playerID, helpMessage);
+            return true;
+        }
+        else if (in.matches("declare [0-3] [0-5] ([1-9]|1[0-2])")) {
+        	// check that player can actually declare
+        	if (!playerState.equals("Declare")){
+                informClient(playerID, "Your state is: "+playerState+
+                        ". You cannot declare right now.");
+                return true;
+            }
+        	
+        	else {
+        		String[] tokenizedInput = in.split(" ");
+                int targetPlayer = Integer.valueOf(tokenizedInput[1]);
+                int guessPosition = Integer.valueOf(tokenizedInput[2]);
+                int guessRank = Integer.valueOf(tokenizedInput[3]);
+                
+                boolean guessCorrect = gameBoard.guess(playerID, targetPlayer, 
+                        guessPosition, guessRank);
+                
+                if (!guessCorrect) {
+                	informAllClients("Player " + playerID + " incorrectly declared card " + 
+                			guessPosition + " of player " + targetPlayer + ": " + guessRank 
+                			+ ".");
+                	return false;
+                }
+                
+                // alter game view
+                gameBoard.revealCardToAll(targetPlayer, guessPosition);
+                
+                // announce result of action to players
+                informAllClients("Player " + playerID + " correctly declared card "+
+                        guessPosition + " of player " + targetPlayer+": " + guessRank + "!");
+                refreshAllClientsViews();
+                
+                return true;
+                
+        	}
+        }
+        
         else{
             throw new UnsupportedOperationException("Should not get here");            
         }
