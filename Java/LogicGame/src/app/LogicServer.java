@@ -279,7 +279,7 @@ public class LogicServer {
         		gameBoard.makeAllCardsPublic();
         		informAllClients("Here is a view of all players' cards:");
         		refreshAllClientsViews();
-        		informAllClients("Players " + ((declarer+1)%4) + " and " + ((declarer+3)%4) + " lose!");
+        		informAllClients("Players " + ((declarer+1)%4) + " and " + ((declarer+3)%4) + " win!");
         		break;
         	}
         	
