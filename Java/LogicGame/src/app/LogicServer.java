@@ -422,6 +422,9 @@ public class LogicServer {
                 status.set(nextPlayerID, "Pass");
             }
         }
+        else if (in.matches("declare")) {
+        	
+        }
         else{
             throw new UnsupportedOperationException("Should not get here");            
         }
