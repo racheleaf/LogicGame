@@ -143,16 +143,21 @@ public class ClientHandlerThread implements Runnable{
             message = listenServer();
             assert(message.equals("Setup is complete.  Game has begun!"));
             out.println(message);
-
+            
+            // whether or not the game has ended
+            boolean gameEnded = false;
+            
             // from here on, receiving messages from main server
             // and sending requests to main server happens 
             // asynchronously, so all clients receive updates
             // from server real-time
             new Thread(new Runnable(){
                 public void run(){
-                    while (true){
+                	String message = "";
+                    while (!message.matches("Players [0-3] and [0-3] win!")){
                         try {
-                            out.println(listenServer());
+                        	message = listenServer();
+                            out.println(message);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }                        
@@ -160,7 +165,7 @@ public class ClientHandlerThread implements Runnable{
                 }
             }).start();
             
-            
+            // reads client input and sends to main server
             for (String line = in.readLine(); line != null; line = in.readLine()) {
                 informServer(line);
             }

@@ -279,14 +279,14 @@ public class LogicServer {
         		gameBoard.makeAllCardsPublic();
         		informAllClients("Here is a view of all players' cards:");
         		refreshAllClientsViews();
-        		informAllClients("Players " + ((declarer+1)%4) + " and " + ((declarer+3)%4) + " win!");
+        		informAllClients("Players " + Integer.toString((declarer+1)%4) + " and " + Integer.toString((declarer+3)%4) + " win!");
         		break;
         	}
         	
         	// if all cards have been declared correctly, declarer and partner win
         	if (!gameBoard.isMoreToDeclare()) {
-        		informAllClients("Player " + declarer + " has declared all cards correctly." 
-        				+ " Players " + declarer + " and " + ((declarer+2)%4) + " win!");
+        		informAllClients("Player " + declarer + " has declared all cards correctly."); 
+        		informAllClients("Players " + Integer.toString(declarer) + " and " + Integer.toString((declarer+2)%4) + " win!");
         		break;
         	}
         }
