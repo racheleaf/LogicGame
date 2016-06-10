@@ -21,8 +21,7 @@ public class ClientHandlerThread implements Runnable{
     private final Socket socket;
     
     // Controls communication to/from server
-    private final BlockingQueue<String> fromServer;
-    private final BlockingQueue<String> toServer;
+    private final ClientTransmitter transmitter; 
     
     private boolean gameIsOver = false; 
     
@@ -39,36 +38,13 @@ public class ClientHandlerThread implements Runnable{
      * to this BlockingQueue, and ONLY the server should 
      * read from it.  
      */
-    public ClientHandlerThread(Socket socket, int playerID, 
-            BlockingQueue<String> fromServer, BlockingQueue<String>toServer){
+    public ClientHandlerThread(Socket socket,  
+            int playerID, ClientTransmitter transmitter){
         this.socket = socket;
         this.playerID = playerID;
-        this.fromServer = fromServer;
-        this.toServer = toServer;
+        this.transmitter = transmitter;
     }
     
-    /**
-     * Precede a message with this client's ID and send
-     * it to the server  
-     * @param message a message to be sent to the server, 
-     * written in an appropriate protocol 
-     * @throws InterruptedException
-     */
-    private void informServer(String message) throws InterruptedException{
-        toServer.put("Client " + playerID + ": " + message);
-    }
-
-    /**
-     * Listens for a message from the server. Blocks until
-     * a message is received.  
-     * @return message from server
-     * @throws InterruptedException
-     */
-    private String listenServer() throws InterruptedException{
-        String message = fromServer.take();
-        System.err.println("Received by Client " + playerID + ": \n" + message);
-        return message;
-    }
 
     
     @Override
@@ -110,9 +86,9 @@ public class ClientHandlerThread implements Runnable{
             // phase while clients are connecting
             // all threads go to sleep until the main server thread begins the game
             // by calling threadControls[playerID].notify()
-            informServer("Ready for setup.");
+            transmitter.informServer("Ready for setup.");
 
-            String message = listenServer();
+            String message = transmitter.listenServer();
             assert(message.equals("Game started, proceed."));
             
             out.println("Please set up your cards.");
@@ -120,10 +96,10 @@ public class ClientHandlerThread implements Runnable{
             // SETUP PHASE
             
             // show each player own cards
-            String cardLayout = listenServer();
+            String cardLayout = transmitter.listenServer();
             out.println(cardLayout);
             
-            String instructions = listenServer();
+            String instructions = transmitter.listenServer();
             out.println(instructions);
             // clients are shown only their own cards, and can request
             // swaps of adjacent cards.  
@@ -131,18 +107,18 @@ public class ClientHandlerThread implements Runnable{
             // this loop continues until client enters "done" 
             for (String line = in.readLine(); line != null; line = in.readLine()) {
                 // Client handler sends request to server and receives response
-                informServer(line);
+                transmitter.informServer(line);
                 if (line.equals("done")){
                     out.println("Yay! Wait for other players to finish setup...");
                     break;
                 }
-                String output = listenServer();
+                String output = transmitter.listenServer();
                 if (output != null){
                     out.println(output);
                 }
             }
             
-            message = listenServer();
+            message = transmitter.listenServer();
             assert(message.equals("Setup is complete.  Game has begun!"));
             out.println(message);
             
@@ -157,7 +133,7 @@ public class ClientHandlerThread implements Runnable{
                     String message = "";
                     while (!message.matches("Players [0-3] and [0-3] win!")){
                         try {
-                            message = listenServer();
+                            message = transmitter.listenServer();
                             out.println(message);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
@@ -170,7 +146,7 @@ public class ClientHandlerThread implements Runnable{
 
             // reads client input and sends to main server
             for (String line = in.readLine(); line != null && !gameIsOver; line = in.readLine()) {
-                informServer(line);
+                transmitter.informServer(line);
             }
             
 

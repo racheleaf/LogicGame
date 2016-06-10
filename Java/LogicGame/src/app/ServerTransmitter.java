@@ -12,7 +12,6 @@ public class ServerTransmitter {
     // communication between asynchronous threads, especially when one thread
     // has to wait for another to get to some point before it proceeds
     
-    // Blocking queues for transmission from server to client handler threads
     private final List<BlockingQueue<String>> toClients = Arrays.asList(
             new LinkedBlockingQueue<>(), 
             new LinkedBlockingQueue<>(), 
@@ -63,12 +62,35 @@ public class ServerTransmitter {
     }
 
     /**
-     * Return the ClientTransmitter of a certain player's handler
+     * Sender ID of a message from a client 
+     * @param messageFromClient a message sent by a 
+     * ClientHandlerThread's informMaster method
+     * @return ID of sender
+     */
+    public static int getSenderID(String messageFromClient){
+        return Character.getNumericValue(messageFromClient.charAt(7));
+    }
+
+    /**
+     * Content of message from client
+     * @param messageFromClient a message sent by a 
+     * ClientHandlerThread's informMaster method
+     * @return message, without the prepended client ID
+     * information
+     */
+    public static String getMessageText(String messageFromClient){
+        return messageFromClient.substring(10);
+    }
+    
+    /**
+     * Get the ClientTransmitter of a certain player's handler
      * @param playerID ID of player
      * @return player playerID's client transmitter 
      */
     public ClientTransmitter getClientTransmitter(int playerID){
         return new ClientTransmitter(playerID, toClients.get(playerID), fromClients);
     }
+    
+    
     
 }

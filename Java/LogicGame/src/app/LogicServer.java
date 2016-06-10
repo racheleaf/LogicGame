@@ -31,30 +31,17 @@ public class LogicServer {
     private static final int DEFAULT_PORT = 24601;
     private static final int MAX_PORT = 65535;
     
+    // clients connect to this
     private final ServerSocket serverSocket;
 
+    // for transmitting information between server and client handlers
+    private final ServerTransmitter transmitter = new ServerTransmitter();
+    
     // this stores all game data.  This server processes I/O and sends the 
-    // approprgate instructions / retrieves the appropriate information from
+    // appropriate instructions / retrieves the appropriate information from
     // gameBoard
     private final GameBoard gameBoard = new GameBoard();
-        
-    // BlockingQueues are queues with the added functionality that if you
-    // try to pop an empty queue, your thread will wait (terminology: "block") 
-    // until something is placed on the BlockingQueue.  This is useful for 
-    // communication between asynchronous threads, especially when one thread
-    // has to wait for another to get to some point before it proceeds
-    
-    // Blocking queues for transmission from server to client handler threads
-    private final List<BlockingQueue<String>> toHandlers = Arrays.asList(
-            new LinkedBlockingQueue<>(), 
-            new LinkedBlockingQueue<>(), 
-            new LinkedBlockingQueue<>(), 
-            new LinkedBlockingQueue<>());
-    
-    // Blocking queue for transmission from clieht handler threads to server.  
-    // Each client's request is of the form "Client x: blah", so server knows 
-    // who to respond to.  
-    private final LinkedBlockingQueue<String> fromHandlers = new LinkedBlockingQueue<>();
+
     
     // status.get(x) keeps track of status of player x.  Possible statuses are: 
     // Inactive: not player's turn
@@ -78,30 +65,6 @@ public class LogicServer {
         serverSocket = new ServerSocket(port);
     }
     
-    
-    /**
-     * Sends a client a message
-     * @param clientID ID of client (0-3)
-     * @param message message to be sent, in an appropriate
-     * protocol
-     * @throws InterruptedException 
-     */
-    private void informClient(int clientID, String message) throws InterruptedException{
-        toHandlers.get(clientID).put(message);
-    }
-
-    /**
-     * Sends all clients a message
-     * @param message message to be sent, in an appropriate 
-     * protocol
-     * @throws InterruptedException
-     */
-    private void informAllClients(String message) throws InterruptedException{
-        for (BlockingQueue<String> channel : toHandlers){
-            channel.put(message);
-        }
-    }
-    
     /**
      * Sends all clients a message containing their latest 
      * view of the board
@@ -109,43 +72,11 @@ public class LogicServer {
      */
     private void refreshAllClientsViews() throws InterruptedException{
         for (int player=0; player<4; player++){
-            informClient(player, 
+            transmitter.informClient(player, 
                     gameBoard.showPlayerViewOfBoard(player));
         }
     }
     
-    /**
-     * Listens for messages from clients
-     * @return message from client
-     * @throws InterruptedException
-     */
-    private String listenClients() throws InterruptedException{
-        String message = fromHandlers.take();
-        System.err.println("Received by master: \n" + message);
-        assert(message.substring(0, 10).matches("Client [0-3]: "));
-        return message;
-    }
-    
-    /**
-     * Sender ID of a message from a client 
-     * @param messageFromClient a message sent by a 
-     * ClientHandlerThread's informMaster method
-     * @return ID of sender
-     */
-    private static int getSenderID(String messageFromClient){
-        return Character.getNumericValue(messageFromClient.charAt(7));
-    }
-
-    /**
-     * Content of message from client
-     * @param messageFromClient a message sent by a 
-     * ClientHandlerThread's informMaster method
-     * @return message, without the prepended client ID
-     * information
-     */
-    private static String getMessageText(String messageFromClient){
-        return messageFromClient.substring(10);
-    }
     
     /**
      * Run the server, listening for client connections and handling them.
@@ -180,8 +111,8 @@ public class LogicServer {
             Socket socket = serverSocket.accept();
             
             // handle a connection
-            Thread thread = new Thread(new ClientHandlerThread(socket, numPlayers, 
-                    toHandlers.get(numPlayers), fromHandlers));                
+            Thread thread = new Thread(new ClientHandlerThread(socket, numPlayers,
+                    transmitter.getClientTransmitter(numPlayers)));                
             
             thread.start();
             
@@ -189,14 +120,15 @@ public class LogicServer {
             // saying "Ready for setup."  Wait for this message 
             // before proceeding, so that the clients are 
             // numbered correctly.  
-            String message = listenClients();
-            assert(message.matches("Client [0-3]: Ready for setup."));
+            String message = transmitter.listenClients();
+            assert(ServerTransmitter.getSenderID(message)==numPlayers); 
+            assert(ServerTransmitter.getMessageText(message).equals("Ready for setup."));
             numPlayers++;
         }
         
         // all players connected!
         
-        informAllClients("Game started, proceed.");
+        transmitter.informAllClients("Game started, proceed.");
     }
 
     /**
@@ -205,10 +137,10 @@ public class LogicServer {
      */
     private void serveSetupPhase() throws InterruptedException{
         for (int player=0; player<4; player++){
-            informClient(player, 
+            transmitter.informClient(player, 
                     gameBoard.showPlayerOwnCards(player));
         }
-        informAllClients("Type 'view' to see your cards, "
+        transmitter.informAllClients("Type 'view' to see your cards, "
                 + "'help' for help message, "
                 + "and 'swap x' to swap card x. "
                 + "Type 'done' to finish.");
@@ -218,10 +150,11 @@ public class LogicServer {
         Set<Integer> isDone = new HashSet<>();
         
         // this loop continues until all clients are done setting up
-        for (String line = listenClients(); line!=null; line = listenClients()){
+        for (String line = transmitter.listenClients(); line!=null; 
+                line = transmitter.listenClients()){
             
-            int senderID = getSenderID(line);
-            String message = getMessageText(line);
+            int senderID = ServerTransmitter.getSenderID(line);
+            String message = ServerTransmitter.getMessageText(line);
             if (message.equals("done")){
                 isDone.add(senderID);
                 if (isDone.equals(players)){
@@ -232,7 +165,7 @@ public class LogicServer {
                 handleRequestSetupPhase(message, senderID);                
             }
         }
-        informAllClients("Setup is complete.  Game has begun!");
+        transmitter.informAllClients("Setup is complete.  Game has begun!");
     }
     
     private void serveMainAndDeclarationPhase() throws InterruptedException{
@@ -241,7 +174,7 @@ public class LogicServer {
 
         refreshAllClientsViews();
         
-        informAllClients("Type 'view' to see your cards, "
+        transmitter.informAllClients("Type 'view' to see your cards, "
                 + "'help' for help message, "
                 + "'pass x' to pass card x, " 
                 + "'guess x y z' to guess card y of player x is z," 
@@ -251,17 +184,18 @@ public class LogicServer {
         // Starts the game.  Player 0 is first to guess, so 
         // Player 2 passes first.  
         status.set(2, "Pass");
-        informAllClients("Player 2 to pass.");
+        transmitter.informAllClients("Player 2 to pass.");
         
         // continually listens for and responds to clients' 
         // requests until someone declares
-        for (String line = listenClients(); line!=null; line = listenClients()){
+        for (String line = transmitter.listenClients(); line!=null; 
+                line = transmitter.listenClients()){
             // parse requests
-            int senderID = getSenderID(line);
-            String message = getMessageText(line);
+            int senderID = ServerTransmitter.getSenderID(line);
+            String message = ServerTransmitter.getMessageText(line);
             
             if (message.equals("declare")){
-                informAllClients("Player " + senderID + " is declaring!");
+                transmitter.informAllClients("Player " + senderID + " is declaring!");
                 
                 // changes all other players to Inactive mode, and marks declarer in state Declare 
                 for (int i = 0; i < 4; i++) {
@@ -281,10 +215,11 @@ public class LogicServer {
         
         // DECLARATION 
         
-        for (String line = listenClients(); line != null; line = listenClients()) {
+        for (String line = transmitter.listenClients(); line != null; 
+                line = transmitter.listenClients()) {
             // parse requests
-            int senderID = getSenderID(line);
-            String message = getMessageText(line);
+            int senderID = ServerTransmitter.getSenderID(line);
+            String message = ServerTransmitter.getMessageText(line);
             
             // shouldContinue is false only if declarer declares wrong
             boolean shouldContinue = handleRequestDeclarationPhase(message, senderID);
@@ -292,16 +227,17 @@ public class LogicServer {
             // if declarer declares wrong, declarer and partner lose
             if (!shouldContinue) {
                 gameBoard.makeAllCardsPublic();
-                informAllClients("Here is a view of all players' cards:");
+                transmitter.informAllClients("Here is a view of all players' cards:");
                 refreshAllClientsViews();
-                informAllClients("Players " + Integer.toString((declarer+1)%4) + " and " + Integer.toString((declarer+3)%4) + " win!");
+                transmitter.informAllClients("Players " + Integer.toString((declarer+1)%4) 
+                    + " and " + Integer.toString((declarer+3)%4) + " win!");
                 break;
             }
             
             // if all cards have been declared correctly, declarer and partner win
             if (!gameBoard.isMoreToDeclare()) {
-                informAllClients("Player " + declarer + " has declared all cards correctly."); 
-                informAllClients("Players " + Integer.toString(declarer) + " and " + Integer.toString((declarer+2)%4) + " win!");
+                transmitter.informAllClients("Player " + declarer + " has declared all cards correctly."); 
+                transmitter.informAllClients("Players " + Integer.toString(declarer) + " and " + Integer.toString((declarer+2)%4) + " win!");
                 break;
             }
         }
@@ -329,18 +265,18 @@ public class LogicServer {
         if (!in.matches(regex)){
             // invalid input
             // discard input and return help message
-            informClient(playerID, helpMessage);
+            transmitter.informClient(playerID, helpMessage);
         }
         else if(in.equals("view")){
-            informClient(playerID, gameBoard.showPlayerOwnCards(playerID));
+            transmitter.informClient(playerID, gameBoard.showPlayerOwnCards(playerID));
         }
         else if(in.equals("help")){
-            informClient(playerID, helpMessage);
+            transmitter.informClient(playerID, helpMessage);
         }
         else if(in.matches("swap [0-5]")){
             Integer position = Character.getNumericValue(in.charAt(5));
             gameBoard.swapTwoEqualCards(playerID, position);
-            informClient(playerID, gameBoard.showPlayerOwnCards(playerID));
+            transmitter.informClient(playerID, gameBoard.showPlayerOwnCards(playerID));
         }
         else{
             // should not get here
@@ -370,13 +306,13 @@ public class LogicServer {
         if (!in.matches(regex)){
             // invalid input
             // discard input and return help message
-            informClient(playerID, helpMessage);
+            transmitter.informClient(playerID, helpMessage);
         }
         else if (in.equals("view")){
-            informClient(playerID, gameBoard.showPlayerViewOfBoard(playerID));
+            transmitter.informClient(playerID, gameBoard.showPlayerViewOfBoard(playerID));
         }
         else if (in.equals("help")){
-            informClient(playerID, helpMessage);
+            transmitter.informClient(playerID, helpMessage);
         }
         else if (in.matches("pass [0-5]")){
             // in is of form "pass x" for x in 0-5
@@ -384,7 +320,7 @@ public class LogicServer {
             // player must be in "Pass" state
             if (!playerState.equals("Pass")){
                 
-                informClient(playerID, "Your state is: "+playerState+
+                transmitter.informClient(playerID, "Your state is: "+playerState+
                         ". You cannot pass right now.");
             }
             else{
@@ -396,13 +332,13 @@ public class LogicServer {
                 gameBoard.revealCardToPartner(playerID, position);
                 
                 // announce result of action to players
-                informAllClients("Player " + playerID + " passed card " + position + "!");
+                transmitter.informAllClients("Player " + playerID + " passed card " + position + "!");
                 refreshAllClientsViews();
                 
                 // update and announce whose turn it is 
                 status.set(playerID, "Inactive");
                 int partnerID = (playerID+2)%4;
-                informAllClients("Player " + partnerID + " to guess!");
+                transmitter.informAllClients("Player " + partnerID + " to guess!");
                 status.set(partnerID, "Guess");
             }
         }
@@ -411,7 +347,7 @@ public class LogicServer {
             
             // player must be in "Guess" state
             if (!playerState.equals("Guess")){
-                informClient(playerID, "Your state is: "+playerState+
+                transmitter.informClient(playerID, "Your state is: "+playerState+
                         ". You cannot guess right now.");
             }     
             else{
@@ -430,32 +366,32 @@ public class LogicServer {
                     gameBoard.revealCardToAll(targetPlayer, guessPosition);
                     
                     // announce result of action to players
-                    informAllClients("Player " + playerID + " correctly guessed card "+
+                    transmitter.informAllClients("Player " + playerID + " correctly guessed card "+
                             guessPosition + " of player " + targetPlayer+": " + guessRank + "!");
                     refreshAllClientsViews();
                     
                     // update and announce whose turn it is
                     status.set(playerID, "Inactive");
                     int nextPlayerID = (playerID+3)%4;
-                    informAllClients("Player " + nextPlayerID + " to pass!");
+                    transmitter.informAllClients("Player " + nextPlayerID + " to pass!");
                     status.set(nextPlayerID, "Pass");
                 }
                 else{
                     // announce result of action to players
-                    informAllClients("Player " + playerID + " incorrectly guessed card "+
+                    transmitter.informAllClients("Player " + playerID + " incorrectly guessed card "+
                             guessPosition + " of player " + targetPlayer+": " + guessRank + "!");
                     refreshAllClientsViews();
                     
                     // update player's status, player must now show a card
                     status.set(playerID, "Show");
-                    informAllClients("Player " + playerID + " must show a card!");
+                    transmitter.informAllClients("Player " + playerID + " must show a card!");
                 }
             }
         }
         else if (in.matches("show [0-5]")){
             // player must be in "Show" state
             if (!playerState.equals("Show")){
-                informClient(playerID, "Your state is: "+playerState+
+                transmitter.informClient(playerID, "Your state is: "+playerState+
                         ". You cannot show right now.");
             }            
             else{
@@ -467,13 +403,13 @@ public class LogicServer {
                 gameBoard.revealCardToAll(playerID, position);
                 
                 // announce result of action to players
-                informAllClients("Player " + playerID + " revealed card " + position + "!");
+                transmitter.informAllClients("Player " + playerID + " revealed card " + position + "!");
                 refreshAllClientsViews();
                 
                 // update and announce whose turn it is
                 status.set(playerID, "Inactive");
                 int nextPlayerID = (playerID+3)%4;
-                informAllClients("Player " + nextPlayerID + " to pass!");
+                transmitter.informAllClients("Player " + nextPlayerID + " to pass!");
                 status.set(nextPlayerID, "Pass");
             }
         }
@@ -500,21 +436,21 @@ public class LogicServer {
         if (!in.matches(regex)){
             // invalid input
             // discard input and return help message
-            informClient(playerID, helpMessage);
+            transmitter.informClient(playerID, helpMessage);
             return true;
         }
         else if (in.equals("view")){
-            informClient(playerID, gameBoard.showPlayerViewOfBoard(playerID));
+            transmitter.informClient(playerID, gameBoard.showPlayerViewOfBoard(playerID));
             return true;
         }
         else if (in.equals("help")){
-            informClient(playerID, helpMessage);
+            transmitter.informClient(playerID, helpMessage);
             return true;
         }
         else if (in.matches("declare [0-3] [0-5] ([1-9]|1[0-2])")) {
         	// check that player can actually declare
         	if (!playerState.equals("Declare")){
-                informClient(playerID, "Your state is: "+playerState+
+        	    transmitter.informClient(playerID, "Your state is: "+playerState+
                         ". You cannot declare right now.");
                 return true;
             }
@@ -529,7 +465,7 @@ public class LogicServer {
                         guessPosition, guessRank);
                 
                 if (!guessCorrect) {
-                	informAllClients("Player " + playerID + " incorrectly declared card " + 
+                    transmitter.informAllClients("Player " + playerID + " incorrectly declared card " + 
                 			guessPosition + " of player " + targetPlayer + ": " + guessRank 
                 			+ ".");
                 	return false;
@@ -539,7 +475,7 @@ public class LogicServer {
                 gameBoard.revealCardToAll(targetPlayer, guessPosition);
                 
                 // announce result of action to players
-                informAllClients("Player " + playerID + " correctly declared card "+
+                transmitter.informAllClients("Player " + playerID + " correctly declared card "+
                         guessPosition + " of player " + targetPlayer+": " + guessRank + "!");
                 refreshAllClientsViews();
                 
