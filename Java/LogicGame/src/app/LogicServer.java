@@ -157,11 +157,20 @@ public class LogicServer {
      */
     public void serve() throws IOException, InterruptedException {
     	
-    	// ID of player who declares, to be set when declaration occurs
-    	int declarer = -1;
-
-        // CONNECTION PHASE
+        serveConnectionPhase();
         
+        serveSetupPhase();
+
+        serveMainAndDeclarationPhase();
+        
+    }
+    
+    /**
+     * 
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    private void serveConnectionPhase() throws IOException, InterruptedException{
         int numPlayers = 0;
         
         // While there are fewer than 4 players, wait for more connections, and
@@ -188,9 +197,13 @@ public class LogicServer {
         // all players connected!
         
         informAllClients("Game started, proceed.");
-        
-        // SETUP PHASE
-        
+    }
+
+    /**
+     * 
+     * @throws InterruptedException
+     */
+    private void serveSetupPhase() throws InterruptedException{
         for (int player=0; player<4; player++){
             informClient(player, 
                     gameBoard.showPlayerOwnCards(player));
@@ -219,11 +232,13 @@ public class LogicServer {
                 handleRequestSetupPhase(message, senderID);                
             }
         }
-
-        // MAIN PHASE
-        
         informAllClients("Setup is complete.  Game has begun!");
-        
+    }
+    
+    private void serveMainAndDeclarationPhase() throws InterruptedException{
+        // ID of player who declares, to be set when declaration occurs
+        int declarer = -1;
+
         refreshAllClientsViews();
         
         informAllClients("Type 'view' to see your cards, "
@@ -248,9 +263,9 @@ public class LogicServer {
             if (message.equals("declare")){
                 informAllClients("Player " + senderID + " is declaring!");
                 
-                // changes all other players to Anactive mode, and marks declarer in state Declare 
+                // changes all other players to Inactive mode, and marks declarer in state Declare 
                 for (int i = 0; i < 4; i++) {
-                	status.set(i, "Inactive");
+                    status.set(i, "Inactive");
                 }
                 status.set(senderID, "Declare");
                 declarer = senderID;
@@ -264,33 +279,32 @@ public class LogicServer {
             handleRequestMainPhase(message, senderID);
         }
         
-        // DECLARATION PHASE
+        // DECLARATION 
         
         for (String line = listenClients(); line != null; line = listenClients()) {
-        	// parse requests
-        	int senderID = getSenderID(line);
-        	String message = getMessageText(line);
-        	
-        	// shouldContinue is false only if declarer declares wrong
-        	boolean shouldContinue = handleRequestDeclarationPhase(message, senderID);
-        	
-        	// if declarer declares wrong, declarer and partner lose
-        	if (!shouldContinue) {
-        		gameBoard.makeAllCardsPublic();
-        		informAllClients("Here is a view of all players' cards:");
-        		refreshAllClientsViews();
-        		informAllClients("Players " + Integer.toString((declarer+1)%4) + " and " + Integer.toString((declarer+3)%4) + " win!");
-        		break;
-        	}
-        	
-        	// if all cards have been declared correctly, declarer and partner win
-        	if (!gameBoard.isMoreToDeclare()) {
-        		informAllClients("Player " + declarer + " has declared all cards correctly."); 
-        		informAllClients("Players " + Integer.toString(declarer) + " and " + Integer.toString((declarer+2)%4) + " win!");
-        		break;
-        	}
+            // parse requests
+            int senderID = getSenderID(line);
+            String message = getMessageText(line);
+            
+            // shouldContinue is false only if declarer declares wrong
+            boolean shouldContinue = handleRequestDeclarationPhase(message, senderID);
+            
+            // if declarer declares wrong, declarer and partner lose
+            if (!shouldContinue) {
+                gameBoard.makeAllCardsPublic();
+                informAllClients("Here is a view of all players' cards:");
+                refreshAllClientsViews();
+                informAllClients("Players " + Integer.toString((declarer+1)%4) + " and " + Integer.toString((declarer+3)%4) + " win!");
+                break;
+            }
+            
+            // if all cards have been declared correctly, declarer and partner win
+            if (!gameBoard.isMoreToDeclare()) {
+                informAllClients("Player " + declarer + " has declared all cards correctly."); 
+                informAllClients("Players " + Integer.toString(declarer) + " and " + Integer.toString((declarer+2)%4) + " win!");
+                break;
+            }
         }
-        
     }
     
 
