@@ -8,8 +8,8 @@ import java.util.concurrent.BlockingQueue;
  */
 public class ClientTransmitter {
 
-    private final BlockingQueue<String> fromServer;
-    private final BlockingQueue<String> toServer;
+    private final BlockingQueue<Message> fromServer;
+    private final BlockingQueue<Message> toServer;
     private final int playerID; // in range 0-3
     
     /**
@@ -19,22 +19,23 @@ public class ClientTransmitter {
      * @param fromServer channel for communication from server to a ClientHandler
      * @param toServer channel for communication from a ClientHandler to a server
      */
-    public ClientTransmitter(int playerID, BlockingQueue<String> fromServer, 
-            BlockingQueue<String> toServer){
+    public ClientTransmitter(int playerID, BlockingQueue<Message> fromServer, 
+            BlockingQueue<Message> toServer){
         this.playerID = playerID;
         this.fromServer = fromServer;
         this.toServer = toServer;
     }
     
     /**
-     * Precede a message with this client's ID and send
-     * it to the server  
+     * Send a message to the server   
+     * @param isExternal true if message is relayed from client, false if 
+     * message is between handler and server for maintaining gamestate
      * @param message a message to be sent to the server, 
      * written in an appropriate protocol 
      * @throws InterruptedException
      */
-    public void informServer(String message) throws InterruptedException{
-        toServer.put("Client " + playerID + ": " + message);
+    public void informServer(boolean isExternal, String message) throws InterruptedException{
+        toServer.put(new Message("Client " + playerID,"Server",isExternal, message));
     }
     
     /**
@@ -43,9 +44,11 @@ public class ClientTransmitter {
      * @return message from server
      * @throws InterruptedException
      */
-    public String listenServer() throws InterruptedException{
-        String message = fromServer.take();
-        System.err.println("Received by Client " + playerID + ": \n" + message);
+    public Message listenServer() throws InterruptedException{
+        Message message = fromServer.take();
+        System.err.println("Received:" + message.toString());
+        assert(message.getSender().equals("Server"));
+        assert(message.getRecipient().equals("Client "+playerID));
         return message;
     }
 
