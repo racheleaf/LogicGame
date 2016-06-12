@@ -1,5 +1,6 @@
 package app;
 
+import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -38,6 +39,22 @@ public class TwoWayChannelBlockingQueue implements TwoWayChannel {
         return this.in.take();
     }
     
+    @Override
+    public void close() throws IOException {
+        // TODO 
+    }
+
+    @Override
+    public void closeOut() {
+        // TODO
+    }
+
+    @Override
+    public void closeIn() throws IOException {
+        // TODO
+    }
+
+    
     /**
      * Get the reversed TwoWayChannel
      * @return the TwoWayChannel in the opposite direction
@@ -45,5 +62,6 @@ public class TwoWayChannelBlockingQueue implements TwoWayChannel {
     public TwoWayChannelBlockingQueue getReverseChannel(){
         return new TwoWayChannelBlockingQueue(in, out);
     }
+
     
 }

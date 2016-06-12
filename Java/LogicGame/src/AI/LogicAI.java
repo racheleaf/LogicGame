@@ -1,11 +1,12 @@
 package AI;
 
 import app.TwoWayChannel;
+import app.TwoWayChannelBlockingQueue;
 
 public class LogicAI implements Runnable{
     private final TwoWayChannel channel;
     
-    public LogicAI(TwoWayChannel channel){
+    public LogicAI(TwoWayChannelBlockingQueue channel){
         this.channel = channel;
     }
 

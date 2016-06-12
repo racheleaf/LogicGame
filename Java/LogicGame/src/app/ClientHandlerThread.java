@@ -17,9 +17,7 @@ public class ClientHandlerThread implements Runnable{
     private final int playerID;
 
     // Controls communication to/from client
-    private final Socket socket;
-    private final BufferedReader in;
-    private final PrintWriter out;
+    private final TwoWayChannel clientChannel;
     
     // Controls communication to/from server
     private final ClientTransmitter transmitter; 
@@ -43,9 +41,7 @@ public class ClientHandlerThread implements Runnable{
      */
     public ClientHandlerThread(Socket socket,  
             int playerID, ClientTransmitter transmitter) throws IOException{
-        this.socket = socket;
-        this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        this.out = new PrintWriter(socket.getOutputStream(), true);
+        this.clientChannel = new TwoWayChannelSocket(socket);
         this.playerID = playerID;
         this.transmitter = transmitter;
         
@@ -63,7 +59,7 @@ public class ClientHandlerThread implements Runnable{
             ie.printStackTrace();
         } finally {
             try {
-                socket.close();
+                clientChannel.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -76,10 +72,11 @@ public class ClientHandlerThread implements Runnable{
      * Asserts that a message is External and relays it to the client
      * @param message a message
      * @param content expected content
+     * @throws InterruptedException 
      */
-    private void relayExternalMessage(Message message){
+    private void relayExternalMessage(Message message) throws InterruptedException{
         assert(message.isExternal());
-        out.println(message.getContent());
+        clientChannel.send(message.getContent());
     }
 
     
@@ -96,8 +93,8 @@ public class ClientHandlerThread implements Runnable{
             handleSetupPhase();
             handleMainAndDeclarePhase();            
         } finally {
-            out.close();
-            in.close();
+            clientChannel.closeOut();
+            clientChannel.closeIn();
         }
     }
     
@@ -106,8 +103,8 @@ public class ClientHandlerThread implements Runnable{
      * @throws InterruptedException
      */
     private void handleConnectionPhase() throws InterruptedException{
-        out.println("Welcome to Logic! You are player #" + playerID + ".");
-        out.println("Please wait for four players to arrive.");
+        clientChannel.send("Welcome to Logic! You are player #" + playerID + ".");
+        clientChannel.send("Please wait for four players to arrive.");
 
         // phase while clients are connecting
         // all threads go to sleep until the main server thread begins the game
@@ -134,10 +131,10 @@ public class ClientHandlerThread implements Runnable{
         // swaps of adjacent cards.  
         
         // this loop continues until client enters "done" 
-        for (String line = in.readLine(); line != null; line = in.readLine()) {
+        for (String line = clientChannel.listen(); line != null; line = clientChannel.listen()) {
             // Client handler sends request to server and receives response
             if (line.equals("done")){
-                out.println("Yay! Wait for other players to finish setup...");
+                clientChannel.send("Yay! Wait for other players to finish setup...");
                 transmitter.informServer(false, "Finished setup.");
                 break;
             }
@@ -167,11 +164,11 @@ public class ClientHandlerThread implements Runnable{
                             message != null; 
                             message = transmitter.listenServer()){
                         if (message.isExternal()){
-                            out.println(message.getContent());                                
+                            clientChannel.send(message.getContent());                                
                         }
                         else{
                             Message.verifyInternalMessage(message, "Disconnect.");
-                            out.println("Press enter to disconnect.");
+                            clientChannel.send("Press enter to disconnect.");
                             break;
                         }
                     }                        
@@ -184,8 +181,8 @@ public class ClientHandlerThread implements Runnable{
         }).start();
 
         // reads client input and sends to main server
-        for (String line = in.readLine(); line != null && !gameIsOver; 
-                line = in.readLine()) {
+        for (String line = clientChannel.listen(); line != null && !gameIsOver; 
+                line = clientChannel.listen()) {
             transmitter.informServer(true,line);
         }
     }

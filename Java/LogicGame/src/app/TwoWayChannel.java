@@ -18,4 +18,19 @@ public interface TwoWayChannel {
      */
     public String listen() throws InterruptedException, IOException;
     
+    /**
+     * Closes connection
+     */
+    public void close() throws IOException;
+
+    /**
+     * Closes output
+     */
+    public void closeOut();
+
+    /**
+     * Closes input
+     */
+    public void closeIn() throws IOException;
+
 }
