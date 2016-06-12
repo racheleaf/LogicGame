@@ -146,8 +146,6 @@ public class ClientHandlerThread implements Runnable{
             assert(message.equals("Setup is complete.  Game has begun!"));
             out.println(message);
             
-            // whether or not the game has ended
-            
             // from here on, receiving messages from main server
             // and sending requests to main server happens 
             // asynchronously, so all clients receive updates
