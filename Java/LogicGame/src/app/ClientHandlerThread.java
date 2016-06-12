@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.util.concurrent.BlockingQueue;
 
 /**
  * A thread that handles a client's connection
@@ -19,12 +18,14 @@ public class ClientHandlerThread implements Runnable{
 
     // Controls communication to/from client
     private final Socket socket;
+    private final BufferedReader in;
+    private final PrintWriter out;
     
     // Controls communication to/from server
-    private final BlockingQueue<String> fromServer;
-    private final BlockingQueue<String> toServer;
+    private final ClientTransmitter transmitter; 
     
     private boolean gameIsOver = false; 
+    
     
     /**
      * Constructs a ClientServerThread
@@ -38,37 +39,18 @@ public class ClientHandlerThread implements Runnable{
      * server; All four ClientHandlerThreads should write
      * to this BlockingQueue, and ONLY the server should 
      * read from it.  
+     * @throws IOException 
      */
-    public ClientHandlerThread(Socket socket, int playerID, 
-            BlockingQueue<String> fromServer, BlockingQueue<String>toServer){
+    public ClientHandlerThread(Socket socket,  
+            int playerID, ClientTransmitter transmitter) throws IOException{
         this.socket = socket;
+        this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        this.out = new PrintWriter(socket.getOutputStream(), true);
         this.playerID = playerID;
-        this.fromServer = fromServer;
-        this.toServer = toServer;
+        this.transmitter = transmitter;
+        
     }
     
-    /**
-     * Precede a message with this client's ID and send
-     * it to the server  
-     * @param message a message to be sent to the server, 
-     * written in an appropriate protocol 
-     * @throws InterruptedException
-     */
-    private void informServer(String message) throws InterruptedException{
-        toServer.put("Client " + playerID + ": " + message);
-    }
-
-    /**
-     * Listens for a message from the server. Blocks until
-     * a message is received.  
-     * @return message from server
-     * @throws InterruptedException
-     */
-    private String listenServer() throws InterruptedException{
-        String message = fromServer.take();
-        System.err.println("Received by Client " + playerID + ": \n" + message);
-        return message;
-    }
 
     
     @Override
@@ -88,7 +70,19 @@ public class ClientHandlerThread implements Runnable{
         }  
     }
     
-        
+
+    
+    /**
+     * Asserts that a message is External and relays it to the client
+     * @param message a message
+     * @param content expected content
+     */
+    private void relayExternalMessage(Message message){
+        assert(message.isExternal());
+        out.println(message.getContent());
+    }
+
+    
     /**
      * Handle client connection. Returns when client disconnects.
      * 
@@ -96,53 +90,61 @@ public class ClientHandlerThread implements Runnable{
      * @throws InterruptedException 
      */
     private void handleConnection() throws IOException, InterruptedException {
-        // I/O streams from player
-        BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
         
         try {
-            
-            // CONNECTION PHASE
-            
-            out.println("Welcome to Logic! You are player #" + playerID + ".");
-            out.println("Please wait for four players to arrive.");
+            handleConnectionPhase();
+            handleSetupPhase();
+            handleMainAndDeclarePhase();            
+        } finally {
+            out.close();
+            in.close();
+        }
+    }
+    
+    /**
+     * Handles connection phase
+     * @throws InterruptedException
+     */
+    private void handleConnectionPhase() throws InterruptedException{
+        out.println("Welcome to Logic! You are player #" + playerID + ".");
+        out.println("Please wait for four players to arrive.");
 
-            // phase while clients are connecting
-            // all threads go to sleep until the main server thread begins the game
-            // by calling threadControls[playerID].notify()
-            informServer("Ready for setup.");
+        // phase while clients are connecting
+        // all threads go to sleep until the main server thread begins the game
+        // by calling threadControls[playerID].notify()
+        transmitter.informServer(false, "Finished connecting.");
 
-            String message = listenServer();
-            assert(message.equals("Game started, proceed."));
-            
-            out.println("Please set up your cards.");
-            
-            // SETUP PHASE
-            
-            // show each player own cards
-            String cardLayout = listenServer();
-            out.println(cardLayout);
-            
-            String instructions = listenServer();
-            out.println(instructions);
-            // clients are shown only their own cards, and can request
-            // swaps of adjacent cards.  
-            
-            // this loop continues until client enters "done" 
-            for (String line = in.readLine(); line != null; line = in.readLine()) {
-                // Client handler sends request to server and receives response
-                informServer(line);
-                if (line.equals("done")){
-                    out.println("Yay! Wait for other players to finish setup...");
-                    break;
-                }
-                String output = listenServer();
-                if (output != null){
-                    out.println(output);
-                }
+        Message.verifyInternalMessage(transmitter.listenServer(), 
+                "Connection phase done.");
+    }
+    
+    /**
+     * Handles setup phase
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    private void handleSetupPhase() throws IOException, InterruptedException{
+        // instructions
+        relayExternalMessage(transmitter.listenServer());
+        // show each player own cards
+        relayExternalMessage(transmitter.listenServer());
+        
+        
+        // clients are shown only their own cards, and can request
+        // swaps of adjacent cards.  
+        
+        // this loop continues until client enters "done" 
+        for (String line = in.readLine(); line != null; line = in.readLine()) {
+            // Client handler sends request to server and receives response
+            if (line.equals("done")){
+                out.println("Yay! Wait for other players to finish setup...");
+                transmitter.informServer(false, "Finished setup.");
+                break;
             }
             
-            message = listenServer();
+            
+            /*
+             * message = listenServer();
             assert(message.equals("Setup is complete.  Game has begun!"));
             out.println(message);
             
@@ -165,17 +167,53 @@ public class ClientHandlerThread implements Runnable{
                     gameIsOver = true;
                 }
             }).start();
+            */
+            transmitter.informServer(true, line);
+            relayExternalMessage(transmitter.listenServer());
+        }
+        
+        Message.verifyInternalMessage(transmitter.listenServer(), 
+                "Setup phase done.");
 
-            // reads client input and sends to main server
-            for (String line = in.readLine(); line != null && !gameIsOver; line = in.readLine()) {
-                informServer(line);
+    }
+    
+    /**
+     * Handles main and declare phase
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    private void handleMainAndDeclarePhase() throws IOException, InterruptedException{
+        // from here on, receiving messages from main server
+        // and sending requests to main server happens 
+        // asynchronously, so all clients receive updates
+        // from server real-time
+        new Thread(new Runnable(){
+            public void run(){
+                try{
+                    for (Message message = transmitter.listenServer(); 
+                            message != null; 
+                            message = transmitter.listenServer()){
+                        if (message.isExternal()){
+                            out.println(message.getContent());                                
+                        }
+                        else{
+                            Message.verifyInternalMessage(message, "Disconnect.");
+                            out.println("Press enter to disconnect.");
+                            break;
+                        }
+                    }                        
+                }
+                catch(InterruptedException e){
+                    e.printStackTrace();
+                }
+                gameIsOver = true;
             }
-            
+        }).start();
 
-            
-        } finally {
-            out.close();
-            in.close();
+        // reads client input and sends to main server
+        for (String line = in.readLine(); line != null && !gameIsOver; 
+                line = in.readLine()) {
+            transmitter.informServer(true,line);
         }
     }
     
