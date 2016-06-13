@@ -39,7 +39,8 @@ public class LogicServer {
     // appropriate instructions / retrieves the appropriate information from
     // gameBoard
     private final GameBoard gameBoard = new GameBoard();
-
+    
+    private final List<Boolean> isAI;
     
     // status.get(x) keeps track of status of player x.  Possible statuses are: 
     // Inactive: not player's turn
@@ -53,14 +54,19 @@ public class LogicServer {
     // next player to non-Inactive.  
     private final List<String> status = Arrays.asList("Inactive","Inactive","Inactive","Inactive");
     
+    
+    
     /**
      * Make a LogicServer that listens for connections on a specified port.   
      * 
      * @param port port number, requires 0 <= port <= 65535
+     * @param isAI list such that isAI.get(x) is true iff player x is an AI
      * @throws IOException if an error occurs opening the server socket
      */
-    public LogicServer(int port) throws IOException {
+    public LogicServer(int port, List<Boolean> isAI) throws IOException {
         serverSocket = new ServerSocket(port);
+        assert(isAI.size()==4);
+        this.isAI = isAI;
     }
     
     /**
@@ -101,14 +107,19 @@ public class LogicServer {
         // While there are fewer than 4 players, wait for more connections, and
         // when a connection comes make a new thread that handles it
         while (numPlayers<4) {
-            // wait for a client to connect.  socket is the client's I/O socket
-            Socket socket = serverSocket.accept();
-            
-            // handle a connection
-            Thread thread = new Thread(new ClientHandlerThread(socket, numPlayers,
-                    transmitter.getClientTransmitter(numPlayers)));                
-            
-            thread.start();
+            if(!isAI.get(numPlayers)){
+                // wait for a client to connect.  socket is the client's I/O socket
+                Socket socket = serverSocket.accept();
+                
+                // handle a connection
+                new Thread(new ClientHandlerThread(socket, numPlayers,
+                        transmitter.getClientTransmitter(numPlayers))).start();                
+            }
+            else{
+                // create an AI player
+                new Thread(new ClientHandlerThread(numPlayers, 
+                        transmitter.getClientTransmitter(numPlayers))).start();
+            }
             
             // Connected client thread will send back a message
             // saying "Ready for setup."  Wait for this message 
@@ -503,8 +514,13 @@ public class LogicServer {
      */
     public static void main(String[] args){
         /*TODO provide command line interface??*/
+        
+        // TEMP TEMP VERY TEMP
+        // GO HERE TO SET WHICH PLAYERS ARE AI AND WHICH ARE HUMAN 
+        List<Boolean> isAI = Arrays.asList(false, false, false, true);
+        
         try{
-            runLogicServer(DEFAULT_PORT);
+            runLogicServer(DEFAULT_PORT, isAI);
         } catch (IOException e){
             throw new RuntimeException(e);
         } catch (InterruptedException e) {
@@ -518,8 +534,9 @@ public class LogicServer {
      * @throws IOException
      * @throws InterruptedException 
      */
-    private static void runLogicServer(int port) throws IOException, InterruptedException{
-        LogicServer server = new LogicServer(port);
+    private static void runLogicServer(int port, List<Boolean> isAI) throws IOException, InterruptedException{
+        assert(isAI.size() == 4);
+        LogicServer server = new LogicServer(port, isAI);
         // starts the main server thread
         server.serve();
     }
