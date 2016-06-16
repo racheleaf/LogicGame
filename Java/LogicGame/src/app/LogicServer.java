@@ -1,6 +1,7 @@
 package app;
 
 import java.io.IOException;
+import java.util.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Arrays;
@@ -55,6 +56,8 @@ public class LogicServer {
     private final List<String> status = Arrays.asList("Inactive","Inactive","Inactive","Inactive");
     
     
+    private ArrayList<String> instructions;
+    
     
     /**
      * Make a LogicServer that listens for connections on a specified port.   
@@ -67,6 +70,18 @@ public class LogicServer {
         serverSocket = new ServerSocket(port);
         assert(isAI.size()==4);
         this.isAI = isAI;
+        for (int i = 0; i < 4; i++) {
+        	if (isAI.get(i)) {
+        		instructions.add("setup");
+        	}
+        	else {
+        		instructions.add("Please set up your cards.  \r\n"
+                + "Type 'view' to see your cards, "
+                + "'help' for help message, "
+                + "and 'swap x' to swap card x.  "
+                + "Type 'done' to finish.");
+        	}
+        }
     }
     
     /**

@@ -1,6 +1,6 @@
 package app;
 
-import java.util.Arrays;
+import java.util.*;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -51,6 +51,19 @@ public class ServerTransmitter {
     public void informAllClients(boolean isExternal, String message) throws InterruptedException{
         for (int i=0; i<4; i++){
             informClient(i, isExternal, message);
+        }
+    }
+    
+    /**
+     * Sends all clients a message depending on the type of player (client/AI)
+     * @param isExternal true if message should be relayed to client, false if 
+     * message is directed to client handler to maintain gamestate
+     * @param messages ArrayList of messages to be sent
+     * @throws InterruptedException
+     */
+    public void informAllClients(boolean isExternal, ArrayList<String> messages) throws InterruptedException {
+    	for (int i=0; i<4; i++){
+            informClient(i, isExternal, messages.get(i));
         }
     }
     
