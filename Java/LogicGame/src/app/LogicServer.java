@@ -58,7 +58,7 @@ public class LogicServer {
     
     // generates messages for the client/AI
     // first must set gamestate to be one of the valid states, then use gamestate.getMessages() to get ArrayList of messages to be distributed
-    private final GameState gamestate = new GameState();
+    private final GameState gamestate;
     
     
     /**
@@ -72,6 +72,7 @@ public class LogicServer {
         serverSocket = new ServerSocket(port);
         assert(isAI.size()==4);
         this.isAI = isAI;
+        gamestate = new GameState(isAI);
     }
     
     /**
@@ -392,18 +393,21 @@ public class LogicServer {
                     // update and announce whose turn it is
                     status.set(playerID, "Inactive");
                     int nextPlayerID = (playerID+3)%4;
-                    transmitter.informAllClients(true, "Player " + nextPlayerID + " to pass!");
+                    gamestate.setState("topass", nextPlayerID);
+                    transmitter.informAllClients(true, gamestate.getMessages());
                     status.set(nextPlayerID, "Pass");
                 }
                 else{
+                	gamestate.setState("guess", playerID, new int[] {targetPlayer, guessPosition, guessRank, 0});
+                	
                     // announce result of action to players
-                    transmitter.informAllClients(true, "Player " + playerID + " incorrectly guessed card "+
-                            guessPosition + " of player " + targetPlayer+": " + guessRank + "!");
+                    transmitter.informAllClients(true, gamestate.getMessages());
                     refreshAllClientsViews();
                     
                     // update player's status, player must now show a card
                     status.set(playerID, "Show");
-                    transmitter.informAllClients(true, "Player " + playerID + " must show a card!");
+                    gamestate.setState("toshow", playerID);
+                    transmitter.informAllClients(true, gamestate.getMessages());
                 }
             }
         }
@@ -420,15 +424,17 @@ public class LogicServer {
                 
                 // update game state
                 gameBoard.revealCardToAll(playerID, position);
+                gamestate.setState("show", playerID, position);
                 
                 // announce result of action to players
-                transmitter.informAllClients(true, "Player " + playerID + " revealed card " + position + "!");
+                transmitter.informAllClients(true, gamestate.getMessages());
                 refreshAllClientsViews();
                 
                 // update and announce whose turn it is
                 status.set(playerID, "Inactive");
                 int nextPlayerID = (playerID+3)%4;
-                transmitter.informAllClients(true, "Player " + nextPlayerID + " to pass!");
+                gamestate.setState("topass", nextPlayerID);
+                transmitter.informAllClients(true, gamestate.getMessages());
                 status.set(nextPlayerID, "Pass");
             }
         }
@@ -516,7 +522,7 @@ public class LogicServer {
         
         // TEMP TEMP VERY TEMP
         // GO HERE TO SET WHICH PLAYERS ARE AI AND WHICH ARE HUMAN 
-        List<Boolean> isAI = Arrays.asList(false, false, false, true);
+        List<Boolean> isAI = Arrays.asList(false, false, false, false);
         
         try{
             runLogicServer(DEFAULT_PORT, isAI);

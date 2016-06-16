@@ -13,6 +13,7 @@ public class GameState {
 	 * turns: "topass", "toshow", "toguess"
 	 * moves: "pass" "show" "guess" 
 	 * declare: "declare"
+	 * final: "disconnect"
 	 */
 	String gamestate;
 	
@@ -29,6 +30,10 @@ public class GameState {
 	
 	// array of length 4 containing whether each player is an AI -
 	protected List<Boolean> isAI;
+	
+	public GameState(List<Boolean> isAI) {
+		this.isAI = isAI;
+	}
 	
 	/**
 	 * Sets the state of the game
@@ -124,6 +129,10 @@ public class GameState {
 		if (gamestate.equals("declare")) {
 			return "declare " + playerID;
 		}
+		// final
+		if (gamestate.equals("disconnect")) {
+			return "disconnect";
+		}
 		return "";
 	}
 	
@@ -174,6 +183,9 @@ public class GameState {
 		}
 		if (gamestate.equals("declare")) {
 			return "Player " + playerID + " is declaring!";
+		}
+		if (gamestate.equals("disconnect")) {
+			return "Disconnect.";
 		}
 		return "";
 	}
