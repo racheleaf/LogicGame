@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Set;
 
 import game.GameBoard;
+import game.GameState;
 
 /**
  * A server for Logic
@@ -55,8 +56,9 @@ public class LogicServer {
     // next player to non-Inactive.  
     private final List<String> status = Arrays.asList("Inactive","Inactive","Inactive","Inactive");
     
-    
-    private ArrayList<String> instructions;
+    // generates messages for the client/AI
+    // first must set gamestate to be one of the valid states, then use gamestate.getMessages() to get ArrayList of messages to be distributed
+    private final GameState gamestate = new GameState();
     
     
     /**
@@ -70,18 +72,6 @@ public class LogicServer {
         serverSocket = new ServerSocket(port);
         assert(isAI.size()==4);
         this.isAI = isAI;
-        for (int i = 0; i < 4; i++) {
-        	if (isAI.get(i)) {
-        		instructions.add("setup");
-        	}
-        	else {
-        		instructions.add("Please set up your cards.  \r\n"
-                + "Type 'view' to see your cards, "
-                + "'help' for help message, "
-                + "and 'swap x' to swap card x.  "
-                + "Type 'done' to finish.");
-        	}
-        }
     }
     
     /**
@@ -156,12 +146,8 @@ public class LogicServer {
      * @throws InterruptedException
      */
     private void serveSetupPhase() throws InterruptedException{
-        transmitter.informAllClients(true,
-                "Please set up your cards.  \r\n"
-                + "Type 'view' to see your cards, "
-                + "'help' for help message, "
-                + "and 'swap x' to swap card x.  "
-                + "Type 'done' to finish.");
+    	gamestate.setState("setup");
+        transmitter.informAllClients(true, gamestate.getMessages());
         
         for (int player=0; player<4; player++){
             transmitter.informClient(player,true, 
@@ -201,15 +187,9 @@ public class LogicServer {
     private void serveMainAndDeclarationPhase() throws InterruptedException{
         // ID of player who declares, to be set when declaration occurs
         int declarer = -1;
-
-        transmitter.informAllClients(true,
-                "Game has begun! \r\n" 
-                + "Type 'view' to see your cards, "
-                + "'help' for help message, "
-                + "'pass x' to pass card x, " 
-                + "'guess x y z' to guess card y of player x is z," 
-                + "and 'show x' to show card x. "
-                + "Type 'declare' to declare.");
+        
+        gamestate.setState("begingame");
+        transmitter.informAllClients(true, gamestate.getMessages());
 
         refreshAllClientsViews();
         
@@ -217,7 +197,8 @@ public class LogicServer {
         // Starts the game.  Player 0 is first to guess, so 
         // Player 2 passes first.  
         status.set(2, "Pass");
-        transmitter.informAllClients(true,"Player 2 to pass.");
+        gamestate.setState("toPass", 2);
+        transmitter.informAllClients(true, gamestate.getMessages());
         
         // continually listens for and responds to clients' 
         // requests until someone declares
@@ -228,7 +209,8 @@ public class LogicServer {
             String messageContent = message.getContent();
             
             if (messageContent.equals("declare")){
-                transmitter.informAllClients(true,"Player " + senderID + " is declaring!");
+            	gamestate.setState("declare", senderID);
+                transmitter.informAllClients(true, gamestate.getMessages());
                 
                 // changes all other players to Inactive mode, and marks declarer in state Declare 
                 for (int i = 0; i < 4; i++) {
@@ -365,15 +347,17 @@ public class LogicServer {
                 
                 // alters game state
                 gameBoard.revealCardToPartner(playerID, position);
+                gamestate.setState("pass", playerID, position);
                 
                 // announce result of action to players
-                transmitter.informAllClients(true, "Player " + playerID + " passed card " + position + "!");
+                transmitter.informAllClients(true, gamestate.getMessages());
                 refreshAllClientsViews();
                 
                 // update and announce whose turn it is 
                 status.set(playerID, "Inactive");
                 int partnerID = (playerID+2)%4;
-                transmitter.informAllClients(true, "Player " + partnerID + " to guess!");
+                gamestate.setState("toguess", partnerID);
+                transmitter.informAllClients(true, gamestate.getMessages());
                 status.set(partnerID, "Guess");
             }
         }
@@ -399,10 +383,10 @@ public class LogicServer {
                 if (guessCorrect){
                     // alter game state
                     gameBoard.revealCardToAll(targetPlayer, guessPosition);
+                    gamestate.setState("guess", playerID, new int[] {targetPlayer, guessPosition, guessRank, 1});
                     
                     // announce result of action to players
-                    transmitter.informAllClients(true, "Player " + playerID + " correctly guessed card "+
-                            guessPosition + " of player " + targetPlayer+": " + guessRank + "!");
+                    transmitter.informAllClients(true, gamestate.getMessages());
                     refreshAllClientsViews();
                     
                     // update and announce whose turn it is
