@@ -1,8 +1,14 @@
 package app;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 
+/**
+ * A class of messages from the LogicServer to ClientHandlerThreads
+ * TODO not yet incorporated into the app
+ */
 public class InternalMessage {
 	
 	/*
@@ -12,122 +18,172 @@ public class InternalMessage {
 	 * moves: "pass" "show" "guess" 
 	 * declare: "declare"
 	 * final: "disconnect"
+	 * board view: "board"
 	 */
-	String type;
+	private final String type;
 	
-	// stores guess information
-	// xyz = {target player x, position of card y, rank guessed z, 1 if guess was correct and 0 if not}
-	private int[] xyz;
+	/* 
+	 * Basically Optional<Type> is an object that's either an object of 
+	 * type Type, or absent 
+	 * You can check if an Optional is present with .isPresent(), and if 
+	 * it's present you can get the value with .get() (which throws an
+	 * exception when not present)  
+	 * You create an empty Optional with Optional.empty(), and a nonempty
+	 * Optional with value blah with Optional.of(blah) 
+	 */
+	// present for all types except topass, tosow, toguess, pass, show, guess, declare
+	private final Optional<Integer> playerID; 
+	// present for pass, show, guess
+	private final Optional<Integer> cardPosition;
+	// present for guess
+	private final Optional<Integer> targetPlayer;
+	private final Optional<Integer> guessRank;
+	private final Optional<Boolean> guessCorrect;
+
+	// present only for board
+    private final Optional<String> boardView;
 	
-	// Stores move information ("pass"/"show")
-	// x is the position of the card passed or showed.
-	int x;
-	
-	// The playerID of the person who made the move
-	private int playerID;
-	
+	// for convenience
+	private static final Set<String> VALID_TYPES = 
+	        new HashSet<>(Arrays.asList("setup","begingame","topass","toshow","toguess",
+	                "pass","show","guess","declare","disconnect","board"));
+    private static final Set<Integer> VALID_PLAYER_IDS= 
+            new HashSet<>(Arrays.asList(0,1,2,3));
+    private static final Set<Integer> VALID_CARD_POSITIONS= 
+            new HashSet<>(Arrays.asList(0,1,2,3,4,5));
+    private static final Set<Integer> VALID_GUESS_RANKS= 
+            new HashSet<>(Arrays.asList(1,2,3,4,5,6,7,8,9,10,11,12));
+
 	/**
-	 * Constructor for generic message type
-	 * @param type String associated with proper type
+	 * A bunch of asserts to make sure an InternalMessage is well-formed.  
 	 */
-	public InternalMessage(String type) {
-		this.type = type;
+	private void checkRep(){
+	    assert(VALID_TYPES.contains(type));
+	    if (type.equals("setup") || type.equals("begingame") || type.equals("disconnect") ){
+	        assert(!playerID.isPresent());
+	        assert(!cardPosition.isPresent());
+	        assert(!targetPlayer.isPresent());
+	        assert(!guessRank.isPresent());
+	        assert(!guessCorrect.isPresent());
+	        assert(!boardView.isPresent());
+	    }
+	    else if (type.equals("topass") || type.equals("toshow") || type.equals("toguess") || type.equals("declare") ){
+	        assert(playerID.isPresent() && VALID_PLAYER_IDS.contains(playerID.get()));
+	        assert(!cardPosition.isPresent());
+	        assert(!targetPlayer.isPresent());
+	        assert(!guessRank.isPresent());
+	        assert(!guessCorrect.isPresent());
+	        assert(!boardView.isPresent());
+	    }
+	    else if (type.equals("pass") || type.equals("show")){
+	        assert(playerID.isPresent() && VALID_PLAYER_IDS.contains(playerID.get()));
+	        assert(cardPosition.isPresent() && VALID_CARD_POSITIONS.contains(cardPosition.get()));
+	        assert(!targetPlayer.isPresent());
+	        assert(!guessCorrect.isPresent());
+	        assert(!boardView.isPresent());
+	    }
+	    else if (type.equals("guess")){
+	        assert(playerID.isPresent() && VALID_PLAYER_IDS.contains(playerID.get()));
+	        assert(cardPosition.isPresent() && VALID_CARD_POSITIONS.contains(cardPosition.get()));
+            assert(targetPlayer.isPresent() && VALID_PLAYER_IDS.contains(targetPlayer.get()));
+            assert(guessRank.isPresent() && VALID_GUESS_RANKS.contains(guessRank.get()));
+            assert(guessCorrect.isPresent());
+            assert(!boardView.isPresent());
+            assert((playerID.get() + targetPlayer.get())%2 == 1); // guessing player and target on opposite teams 
+	    }
+	    if(type.equals("board")){
+            assert(!playerID.isPresent());
+            assert(!cardPosition.isPresent());
+            assert(!targetPlayer.isPresent());
+            assert(!guessRank.isPresent());
+            assert(!guessCorrect.isPresent());
+            assert(boardView.isPresent());
+        }
+        else{
+	        throw new RuntimeException("Should not get here");
+	    }
 	}
 	
 	/**
 	 * Constructor for toMove's or declare
-	 * @param toMoveOrDeclare "topass"/"toshow"/"toguess"/"declare"
+	 * @param type "topass"/"toshow"/"toguess"/"declare"
 	 * @param playerID if a turn type, the playerID of the player who is supposed to move / if "declare", playerID of player declaring
 	 */
-	public InternalMessage(String toMoveOrDeclare, int playerID) {
-		this.type = toMoveOrDeclare;
-		this.playerID = playerID;
+	public InternalMessage(String type, int playerID) {
+		this.type = type;
+		this.playerID = Optional.of(playerID);
+		this.cardPosition = Optional.empty();
+		this.targetPlayer = Optional.empty();
+		this.guessRank = Optional.empty();
+		this.guessCorrect = Optional.empty();
+		this.boardView = Optional.empty();
+		this.checkRep();
 	}
 	
 	/**
 	 * Constructor for types "pass" or "show"
 	 * @param move String, either "pass" or "show"
 	 * @param playerID playerID of player who moved
-	 * @param x the position of the card passed or showed
+	 * @param cardPosition the position of the card passed or showed
 	 */
-	public InternalMessage(String move, int playerID, int x) {
-		assert (move.equals("pass") || move.equals("show"));
-		this.type = move;
-		this.x = x;
-		this.playerID = playerID;
+	public InternalMessage(String type, int playerID, int cardPosition){
+		this.type = type;
+		this.playerID = Optional.of(playerID);
+        this.cardPosition = Optional.of(cardPosition);
+		this.targetPlayer = Optional.empty();
+		this.guessRank = Optional.empty();
+		this.guessCorrect = Optional.empty();
+		this.boardView = Optional.empty();
+		this.checkRep();
 	}
 	
 	/**
 	 * Constructor for type "guess"
 	 * @param guess "guess"
 	 * @param playerID the player who's guessing
-	 * @param xyz {target player x, position of card y, rank guessed z, 1 if guess was correct and 0 if not}
+	 * @param cardPosition position of card being guessed
+	 * @param targetPlayer ID of player being guessed on
+	 * @param guessRank rank of guess 
 	 */
-	public InternalMessage(String guess, int playerID, int[] xyz) {
-		assert (guess.equals("guess"));
-		this.type = "guess";
-		this.playerID = playerID;
-		this.xyz = xyz;
+	public InternalMessage(String type, int playerID, int cardPosition, int targetPlayer, int guessRank, boolean guessCorrect) {
+		this.type = type;
+		this.playerID = Optional.of(playerID);
+		this.cardPosition = Optional.of(cardPosition);
+		this.targetPlayer = Optional.of(targetPlayer);
+		this.guessRank = Optional.of(guessRank);
+		this.guessCorrect = Optional.of(guessCorrect);
+		this.boardView = Optional.empty();
+		this.checkRep();
 	}
 	
-	public ArrayList<String> getMessages(List<Boolean> isAI) {
-		ArrayList<String> messages = new ArrayList<String>();
-		for (int i = 0; i < 4; i++) {
-			if (isAI.get(i)) {
-				messages.add(getMessageAI());
-			}
-			else {
-				messages.add(getMessageClient());
-			}
-		}
-		return messages;
-	}
+	 /**
+     * Constructor for type "board"
+     * @param type String associated with proper type
+     * @param boardView String rep of board
+     */
+    public InternalMessage(String type, String boardView) {
+        this.type = type;
+        this.playerID = Optional.empty();
+        this.cardPosition = Optional.empty();
+        this.targetPlayer = Optional.empty();
+        this.guessRank = Optional.empty();
+        this.guessCorrect = Optional.empty();
+        this.boardView = Optional.of(boardView);
+    }
+
 	
-	private String getMessageAI() {
-		// instructions
-		if (type.equals("setup")) {
-			return "setup";
-		}
-		if (type.equals("begingame")) {
-			return "begingame";
-		}
-		// turn
-		if (type.equals("topass")) {
-			return "topass " + playerID;
-		}
-		if (type.equals("toshow")) {
-			return "toshow " + playerID;
-		}
-		if (type.equals("toguess")) {
-			return "toguess " + playerID;
-		}
-		// move
-		if (type.equals("pass")) {
-			return "pass " + playerID + " " + x;
-		}
-		if (type.equals("show")) {
-			return "show " + playerID + " " + x;
-		}
-		if (type.equals("guess")) {
-			String rep = "guess " + playerID + " " + xyz[0] + " " + xyz[1] + " " + xyz[2] + " ";
-			if (xyz[3] == 1) {
-				rep += "correct";
-				return rep;
-			}
-			rep += "incorrect";
-			return rep;
-		}
-		if (type.equals("declare")) {
-			return "declare " + playerID;
-		}
-		// final
-		if (type.equals("disconnect")) {
-			return "disconnect";
-		}
-		return "";
-	}
 	
-	private String getMessageClient() {
+	/* 
+	 * Overriding the native toString() does some nice things - in particular 
+	 * automatic string conversion when appropriate.
+	 * e.g. System.out.println(an InternalMessage) will now automatically invoke this 
+	 * method to convert the InternalMessage to a string
+	 */
+	/**
+	 * A string representation of an InternalMessage 
+	 */
+	@Override
+	public String toString() {
 		// instructions
 		if (type.equals("setup")) {
 			return "Please set up your cards.  \r\n"
@@ -136,7 +192,7 @@ public class InternalMessage {
 	                + "and 'swap x' to swap card x.  "
 	                + "Type 'done' to finish.";
 		}
-		if (type.equals("begingame")) {
+		else if (type.equals("begingame")) {
 			return "Game has begun! \r\n" 
 	                + "Type 'view' to see your cards, "
 	                + "'help' for help message, "
@@ -146,39 +202,105 @@ public class InternalMessage {
 	                + "Type 'declare' to declare.";
 		}
 		//turn
-		if (type.equals("topass")) {
-			return "Player " + playerID + " to pass.";
+		else if (type.equals("topass")) {
+			return "Player " + playerID.get() + " to pass.";
 		}
-		if (type.equals("toshow")) {
-			return "Player " + playerID + " must show a card.";
+		else if (type.equals("toshow")) {
+			return "Player " + playerID.get() + " must show a card.";
 		}
-		if (type.equals("toguess")) {
-			return ("Player " + playerID + " to guess.");
+		else if (type.equals("toguess")) {
+			return ("Player " + playerID.get() + " to guess.");
 		}
 		// move
-		if (type.equals("pass")) {
-			return "Player " + playerID + " passed card " + x + "!";
+		else if (type.equals("pass")) {
+			return "Player " + playerID.get() + " passed card " + cardPosition.get() + "!";
 		}
-		if (type.equals("show")) {
-			return "Player " + playerID + " revealed card " + x + "!";
+		else if (type.equals("show")) {
+			return "Player " + playerID + " revealed card " + cardPosition.get() + "!";
 		}
-		if (type.equals("guess")) {
+		else if (type.equals("guess")) {
 			// guess is correct
-			if (xyz[3] == 1) {
+			if (guessCorrect.get()) {
 				return "Player " + playerID + " correctly guessed card " + 
-						xyz[1] + " of player " + xyz[0] +": " + xyz[2] + "!";
+						cardPosition.get() + " of player " + targetPlayer.get() +": " + guessRank.get() + "!";
 			}
 			// guess is incorrect
-			return "Player " + playerID + " incorrectly guessed card "+
-            		xyz[1] + " of player " + xyz[0] +": " + xyz[2] + "!";
+			return "Player " + playerID + " incorrectly guessed card " +
+            		cardPosition.get() + " of player " + targetPlayer.get() +": " + guessRank.get() + "!";
 		}
-		if (type.equals("declare")) {
-			return "Player " + playerID + " is declaring!";
+		else if (type.equals("declare")) {
+			return "Player " + playerID.get() + " is declaring!";
 		}
-		if (type.equals("disconnect")) {
+		else if (type.equals("disconnect")) {
 			return "Disconnect.";
 		}
-		return "";
+		// board
+		else if (type.equals("board")){
+		    return boardView.get();
+		}
+		else{
+		    throw new RuntimeException("Should not get here.");
+		}
 	}
+	
+// AI can now parse directly, so this isn't necessary -- also clients can parse via toString
+    
+//  public ArrayList<String> getMessages(List<Boolean> isAI) {
+//      ArrayList<String> messages = new ArrayList<String>();
+//      for (int i = 0; i < 4; i++) {
+//          if (isAI.get(i)) {
+//              messages.add(getMessageAI());
+//          }
+//          else {
+//              messages.add(getMessageClient());
+//          }
+//      }
+//      return messages;
+//  }
+
+//  private String getMessageAI() {
+//      // instructions
+//      if (type.equals("setup")) {
+//          return "setup";
+//      }
+//      if (type.equals("begingame")) {
+//          return "begingame";
+//      }
+//      // turn
+//      if (type.equals("topass")) {
+//          return "topass " + playerID;
+//      }
+//      if (type.equals("toshow")) {
+//          return "toshow " + playerID;
+//      }
+//      if (type.equals("toguess")) {
+//          return "toguess " + playerID;
+//      }
+//      // move
+//      if (type.equals("pass")) {
+//          return "pass " + playerID + " " + x;
+//      }
+//      if (type.equals("show")) {
+//          return "show " + playerID + " " + x;
+//      }
+//      if (type.equals("guess")) {
+//          String rep = "guess " + playerID + " " + xyz[0] + " " + xyz[1] + " " + xyz[2] + " ";
+//          if (xyz[3] == 1) {
+//              rep += "correct";
+//              return rep;
+//          }
+//          rep += "incorrect";
+//          return rep;
+//      }
+//      if (type.equals("declare")) {
+//          return "declare " + playerID;
+//      }
+//      // final
+//      if (type.equals("disconnect")) {
+//          return "disconnect";
+//      }
+//      return "";
+//  } 
+
 	
 }
