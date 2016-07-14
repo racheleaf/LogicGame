@@ -123,8 +123,10 @@ public class LogicServer {
             }
             else{
                 // create an AI player
-                new Thread(new ClientHandlerThread(numPlayers, 
-                        transmitter.getClientTransmitter(numPlayers))).start();
+                // TODO
+                throw new RuntimeException("AI NOT IMPLEMENTED YET"); // TEMP TEMP VERY TEMP 
+/*                new Thread(new ClientHandlerThread(numPlayers, 
+                        transmitter.getClientTransmitter(numPlayers))).start();*/            
             }
             
             // Connected client thread will send back a message

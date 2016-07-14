@@ -3,10 +3,11 @@
  */
 package app;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Socket;
-
-import AI.LogicAI;
 
 /**
  * A thread that handles a client's connection
@@ -16,7 +17,11 @@ public class ClientHandlerThread implements Runnable{
     private final int playerID;
 
     // Controls communication to/from client
-    private final TwoWayChannel clientChannel;
+    
+    /*private final TwoWayChannel clientChannel;*/
+    private final Socket socket;
+    private final BufferedReader in;
+    private final PrintWriter out;
     
     // Controls communication to/from server
     private final ClientTransmitter transmitter; 
@@ -34,27 +39,31 @@ public class ClientHandlerThread implements Runnable{
      */
     public ClientHandlerThread(Socket socket,  
             int playerID, ClientTransmitter transmitter) throws IOException{
-        this.clientChannel = new TwoWayChannelSocket(socket);
+        this.socket = socket;
+        this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        this.out = new PrintWriter(socket.getOutputStream(), true);
         this.playerID = playerID;
         this.transmitter = transmitter;
     }
+
+// Taking out TwoWayChannels and AI connections! TODO rebuild this in a less janky way :) 
     
-    /**
-     * Constructs a ClientServerThread *serving an AI player* and creates and
-     * starts the AI player
-     * @param playerID number of player (0-3)
-     * @param transmitter the ClientTransmitter through which this thread
-     * informs / listens to the server
-     */
-    public ClientHandlerThread(int playerID, ClientTransmitter transmitter){
-        TwoWayChannelBlockingQueue AIChannel = new TwoWayChannelBlockingQueue();
-        this.clientChannel = AIChannel;
-        this.playerID = playerID;
-        this.transmitter = transmitter;
-        
-        // creates and starts the AI player
-        new Thread(new LogicAI(playerID, AIChannel.getReverseChannel())).start();;
-    }
+//    /**
+//     * Constructs a ClientServerThread *serving an AI player* and creates and
+//     * starts the AI player
+//     * @param playerID number of player (0-3)
+//     * @param transmitter the ClientTransmitter through which this thread
+//     * informs / listens to the server
+//     */
+//    public ClientHandlerThread(int playerID, ClientTransmitter transmitter){
+//        TwoWayChannelBlockingQueue AIChannel = new TwoWayChannelBlockingQueue();
+//        this.clientChannel = AIChannel;
+//        this.playerID = playerID;
+//        this.transmitter = transmitter;
+//        
+//        // creates and starts the AI player
+//        new Thread(new LogicAI(playerID, AIChannel.getReverseChannel())).start();;
+//    }
     
 
     
@@ -68,7 +77,7 @@ public class ClientHandlerThread implements Runnable{
             ie.printStackTrace();
         } finally {
             try {
-                clientChannel.close();
+                socket.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -85,7 +94,7 @@ public class ClientHandlerThread implements Runnable{
      */
     private void relayExternalMessage(Message message) throws InterruptedException{
         assert(message.isExternal());
-        clientChannel.send(message.getContent());
+        out.println(message.getContent());
     }
 
     
@@ -102,8 +111,8 @@ public class ClientHandlerThread implements Runnable{
             handleSetupPhase();
             handleMainAndDeclarePhase();            
         } finally {
-            clientChannel.closeOut();
-            clientChannel.closeIn();
+            out.close();
+            in.close();
         }
     }
     
@@ -112,8 +121,8 @@ public class ClientHandlerThread implements Runnable{
      * @throws InterruptedException
      */
     private void handleConnectionPhase() throws InterruptedException{
-        clientChannel.send("Welcome to Logic! You are player #" + playerID + ".");
-        clientChannel.send("Please wait for four players to arrive.");
+        out.println("Welcome to Logic! You are player #" + playerID + ".");
+        out.println("Please wait for four players to arrive.");
 
         // phase while clients are connecting
         // all threads go to sleep until the main server thread begins the game
@@ -140,10 +149,10 @@ public class ClientHandlerThread implements Runnable{
         // swaps of adjacent cards.  
         
         // this loop continues until client enters "done" 
-        for (String line = clientChannel.listen(); line != null; line = clientChannel.listen()) {
+        for (String line = in.readLine(); line != null; line = in.readLine()) {
             // Client handler sends request to server and receives response
             if (line.equals("done")){
-                clientChannel.send("Yay! Wait for other players to finish setup...");
+                out.println("Yay! Wait for other players to finish setup...");
                 transmitter.informServer(false, "Finished setup.");
                 break;
             }
@@ -174,11 +183,11 @@ public class ClientHandlerThread implements Runnable{
                             message != null; 
                             message = transmitter.listenServer()){
                         if (message.isExternal()){
-                            clientChannel.send(message.getContent());                                
+                            out.println(message.getContent());                                
                         }
                         else{
                             Message.verifyInternalMessage(message, "Disconnect.");
-                            clientChannel.send("Press enter to disconnect.");
+                            out.println("Press enter to disconnect.");
                             break;
                         }
                     }                        
@@ -191,8 +200,8 @@ public class ClientHandlerThread implements Runnable{
         }).start();
 
         // reads client input and sends to main server
-        for (String line = clientChannel.listen(); line != null && !gameIsOver; 
-                line = clientChannel.listen()) {
+        for (String line = in.readLine(); line != null && !gameIsOver; 
+                line = in.readLine()) {
             transmitter.informServer(true,line);
         }
     }
