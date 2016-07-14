@@ -107,6 +107,21 @@ public class InternalMessage {
 	}
 	
 	/**
+	 * Constructor for "setup", "begingame", or "disconnect
+	 * @param type "setup"/"begingame"/"disconnect"
+	 */
+	public InternalMessage(String type) {
+		this.type = type;
+		this.playerID = Optional.empty();
+		this.cardPosition = Optional.empty();
+		this.targetPlayer = Optional.empty();
+		this.guessRank = Optional.empty();
+		this.guessCorrect = Optional.empty();
+		this.boardView = Optional.empty();
+		this.checkRep();
+	}
+	
+	/**
 	 * Constructor for toMove's or declare
 	 * @param type "topass"/"toshow"/"toguess"/"declare"
 	 * @param playerID if a turn type, the playerID of the player who is supposed to move / if "declare", playerID of player declaring
