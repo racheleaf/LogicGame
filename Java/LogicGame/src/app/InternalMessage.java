@@ -31,7 +31,7 @@ public class InternalMessage {
 	 * You create an empty Optional with Optional.empty(), and a nonempty
 	 * Optional with value blah with Optional.of(blah) 
 	 */
-	// present for all types except topass, tosow, toguess, pass, show, guess, declare
+	// present for topass, tosow, toguess, pass, show, guess, declare
 	private final Optional<Integer> playerID; 
 	// present for pass, show, guess
 	private final Optional<Integer> cardPosition;
