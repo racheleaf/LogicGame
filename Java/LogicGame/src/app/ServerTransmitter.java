@@ -27,7 +27,7 @@ public class ServerTransmitter {
     }
     
     /**
-     * Sends a client a message
+     * Sends a client a message with a string content
      * @param clientID ID of client (0-3)
      * @param isExternal true if message should be relayed to client, false if
      * message is directed to client handler to maintain gamestate
@@ -39,9 +39,21 @@ public class ServerTransmitter {
         toClients.get(clientID).put(
                 new Message("Server", "Client "+clientID, isExternal, message));
     }
+    
+    /**
+     * Sends a client a message containing an internalmessage
+     * @param clientID ID of client (0-3)
+     * @param isExternal true if message should be relayed to client, false if
+     * message is directed to client handler to maintain gamestate
+     * @param intMes internalmessage to be sent
+     * @throws InterruptedException
+     */
+    public void informClient(int clientID, boolean isExternal, InternalMessage intMes) throws InterruptedException {
+    	toClients.get(clientID).put(new Message("Server", "Client "+clientID, isExternal, intMes));
+    }
 
     /**
-     * Sends all clients a message
+     * Sends all clients a string message
      * @param isExternal true if message should be relayed to client, false if
      * message is directed to client handler to maintain gamestate
      * @param message message to be sent, in an appropriate 
@@ -52,6 +64,19 @@ public class ServerTransmitter {
         for (int i=0; i<4; i++){
             informClient(i, isExternal, message);
         }
+    }
+    
+    /**
+     * Sends all clients an InternalMessage message
+     * @param isExternal true if message should be relayed to client, false if
+     * message is directed to client handler to maintain gamestate
+     * @param intMes InternalMessage content
+     * @throws InterruptedExceptionj
+     */
+    public void informAllClients(boolean isExternal, InternalMessage intMes) throws InterruptedException {
+    	for (int i = 0; i < 4; i++) {
+    		informClient(i, isExternal, intMes);
+    	}
     }
     
     /**

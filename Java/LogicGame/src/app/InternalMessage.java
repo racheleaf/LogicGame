@@ -8,7 +8,9 @@ import java.util.Set;
 /**
  * A class of messages from the LogicServer to ClientHandlerThreads
  * TODO not yet incorporated into the app
+ * TODO all the get methods
  */
+
 public class InternalMessage {
 	
 	/*
@@ -242,6 +244,12 @@ public class InternalMessage {
 		    throw new RuntimeException("Should not get here.");
 		}
 	}
+	
+	public String getType() {
+		return type;
+	}
+	
+	
 	
 // AI can now parse directly, so this isn't necessary -- also clients can parse via toString
     

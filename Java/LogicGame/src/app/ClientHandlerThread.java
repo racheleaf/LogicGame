@@ -94,7 +94,12 @@ public class ClientHandlerThread implements Runnable{
      */
     private void relayExternalMessage(Message message) throws InterruptedException{
         assert(message.isExternal());
-        out.println(message.getContent());
+        if (message.getMessageType().equals("String")) {
+        	out.println(message.getContent());
+        }
+        else if (message.getMessageType().equals("InternalMessage")) {
+        	out.println(message.getInternalMessage().toString());
+        }
     }
 
     
@@ -183,7 +188,7 @@ public class ClientHandlerThread implements Runnable{
                             message != null; 
                             message = transmitter.listenServer()){
                         if (message.isExternal()){
-                            out.println(message.getContent());                                
+                            relayExternalMessage(message);                                
                         }
                         else{
                             Message.verifyInternalMessage(message, "Disconnect.");
