@@ -187,7 +187,53 @@ public class InternalMessage {
         this.guessCorrect = Optional.empty();
         this.boardView = Optional.of(boardView);
     }
-
+    
+    
+    public String getType() {
+		return type;
+	}
+    
+    public int getPlayerID() {
+    	if (playerID.isPresent()) {
+    		return playerID.get();
+    	}
+    	return -1;
+    }
+    
+    public int getCardPosition() {
+    	if (cardPosition.isPresent()) {
+    		return cardPosition.get();
+    	}
+    	return -1;
+    }
+    
+    public int getTargetPlayer() {
+    	if (targetPlayer.isPresent()) {
+    		return targetPlayer.get();
+    	}
+    	return -1;
+    }
+    
+    public int getGuessRank() {
+    	if (guessRank.isPresent()) {
+    		return guessRank.get();
+    	}
+    	return -1;
+    }
+    
+    public boolean getGuessCorrect() {
+    	if (guessCorrect.isPresent()) {
+    		return guessCorrect.get();
+    	}
+    	return false;
+    }
+    
+    public String getBoardView() {
+    	if (boardView.isPresent()) {
+    		return boardView.get();
+    	}
+    	return "";
+    }
 	
 	
 	/* 
@@ -258,10 +304,6 @@ public class InternalMessage {
 		else{
 		    throw new RuntimeException("Should not get here.");
 		}
-	}
-	
-	public String getType() {
-		return type;
 	}
 	
 	
