@@ -93,7 +93,7 @@ public class InternalMessage {
             assert(!boardView.isPresent());
             assert((playerID.get() + targetPlayer.get())%2 == 1); // guessing player and target on opposite teams 
 	    }
-	    if(type.equals("board")){
+	    else if(type.equals("board")){
             assert(!playerID.isPresent());
             assert(!cardPosition.isPresent());
             assert(!targetPlayer.isPresent());
@@ -102,6 +102,7 @@ public class InternalMessage {
             assert(boardView.isPresent());
         }
         else{
+            System.err.println(this);
 	        throw new RuntimeException("Should not get here");
 	    }
 	}
@@ -156,7 +157,7 @@ public class InternalMessage {
 	
 	/**
 	 * Constructor for type "guess"
-	 * @param guess "guess"
+	 * @param type "guess"
 	 * @param playerID the player who's guessing
 	 * @param cardPosition position of card being guessed
 	 * @param targetPlayer ID of player being guessed on
@@ -197,42 +198,42 @@ public class InternalMessage {
     	if (playerID.isPresent()) {
     		return playerID.get();
     	}
-    	return -1;
+    	throw new RuntimeException("Player ID does not exist");
     }
     
     public int getCardPosition() {
     	if (cardPosition.isPresent()) {
     		return cardPosition.get();
     	}
-    	return -1;
+    	throw new RuntimeException("Card position does not exist");
     }
     
     public int getTargetPlayer() {
     	if (targetPlayer.isPresent()) {
     		return targetPlayer.get();
     	}
-    	return -1;
+    	throw new RuntimeException("Target player does not exist");
     }
     
     public int getGuessRank() {
     	if (guessRank.isPresent()) {
     		return guessRank.get();
     	}
-    	return -1;
+    	throw new RuntimeException("Guess rank does not exist");
     }
     
     public boolean getGuessCorrect() {
     	if (guessCorrect.isPresent()) {
     		return guessCorrect.get();
     	}
-    	return false;
+    	throw new RuntimeException("GuessCorrect does not exist");
     }
     
     public String getBoardView() {
     	if (boardView.isPresent()) {
     		return boardView.get();
     	}
-    	return "";
+    	throw new RuntimeException("Board view does not exist");
     }
 	
 	
@@ -279,16 +280,16 @@ public class InternalMessage {
 			return "Player " + playerID.get() + " passed card " + cardPosition.get() + "!";
 		}
 		else if (type.equals("show")) {
-			return "Player " + playerID + " revealed card " + cardPosition.get() + "!";
+			return "Player " + playerID.get() + " revealed card " + cardPosition.get() + "!";
 		}
 		else if (type.equals("guess")) {
 			// guess is correct
 			if (guessCorrect.get()) {
-				return "Player " + playerID + " correctly guessed card " + 
+				return "Player " + playerID.get() + " correctly guessed card " + 
 						cardPosition.get() + " of player " + targetPlayer.get() +": " + guessRank.get() + "!";
 			}
 			// guess is incorrect
-			return "Player " + playerID + " incorrectly guessed card " +
+			return "Player " + playerID.get() + " incorrectly guessed card " +
             		cardPosition.get() + " of player " + targetPlayer.get() +": " + guessRank.get() + "!";
 		}
 		else if (type.equals("declare")) {

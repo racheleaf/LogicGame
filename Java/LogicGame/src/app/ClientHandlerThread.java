@@ -87,19 +87,15 @@ public class ClientHandlerThread implements Runnable{
 
     
     /**
-     * Asserts that a message is External and relays it to the client
-     * @param message a message
-     * @param content expected content
+     * Asserts that an InternalMessage has a specified type and 
+     * relays it to the client
+     * @param message an InternalMessage
+     * @param type expected type
      * @throws InterruptedException 
      */
-    private void relayExternalMessage(Message message) throws InterruptedException{
-        assert(message.isExternal());
-        if (message.getMessageType().equals("String")) {
-        	out.println(message.getContent());
-        }
-        else if (message.getMessageType().equals("InternalMessage")) {
-        	out.println(message.getInternalMessage().toString());
-        }
+    private void checkAndRelayMessage(InternalMessage message, String type) throws InterruptedException{
+        assert(message.getType().equals(type));
+        out.println(message);
     }
 
     
@@ -133,9 +129,6 @@ public class ClientHandlerThread implements Runnable{
         // all threads go to sleep until the main server thread begins the game
         // by calling threadControls[playerID].notify()
         transmitter.informServer(false, "Finished connecting.");
-
-        Message.verifyInternalMessage(transmitter.listenServer(), 
-                "Connection phase done.");
     }
     
     /**
@@ -145,9 +138,10 @@ public class ClientHandlerThread implements Runnable{
      */
     private void handleSetupPhase() throws IOException, InterruptedException{
         // instructions
-        relayExternalMessage(transmitter.listenServer());
+        checkAndRelayMessage(transmitter.listenServer(), "setup");
+        
         // show each player own cards
-        relayExternalMessage(transmitter.listenServer());
+        checkAndRelayMessage(transmitter.listenServer(), "board");
         
         
         // clients are shown only their own cards, and can request
@@ -163,12 +157,9 @@ public class ClientHandlerThread implements Runnable{
             }
             
             transmitter.informServer(true, line);
-            relayExternalMessage(transmitter.listenServer());
+            
+            out.println(transmitter.listenServer());
         }
-        
-        Message.verifyInternalMessage(transmitter.listenServer(), 
-                "Setup phase done.");
-
     }
     
     /**
@@ -177,6 +168,9 @@ public class ClientHandlerThread implements Runnable{
      * @throws InterruptedException
      */
     private void handleMainAndDeclarePhase() throws IOException, InterruptedException{
+        // instructions
+        checkAndRelayMessage(transmitter.listenServer(), "begingame");
+
         // from here on, receiving messages from main server
         // and sending requests to main server happens 
         // asynchronously, so all clients receive updates
@@ -184,16 +178,15 @@ public class ClientHandlerThread implements Runnable{
         new Thread(new Runnable(){
             public void run(){
                 try{
-                    for (Message message = transmitter.listenServer(); 
+                    for (InternalMessage message = transmitter.listenServer(); 
                             message != null; 
                             message = transmitter.listenServer()){
-                        if (message.isExternal()){
-                            relayExternalMessage(message);                                
-                        }
-                        else{
-                            Message.verifyInternalMessage(message, "Disconnect.");
+                        if(message.getType().equals("disconnect")){
                             out.println("Press enter to disconnect.");
                             break;
+                        }
+                        else{
+                            out.println(message);
                         }
                     }                        
                 }

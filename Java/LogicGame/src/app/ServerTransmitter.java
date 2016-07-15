@@ -12,7 +12,7 @@ public class ServerTransmitter {
     // communication between asynchronous threads, especially when one thread
     // has to wait for another to get to some point before it proceeds
     
-    private final List<BlockingQueue<Message>> toClients = Arrays.asList(
+    private final List<BlockingQueue<InternalMessage>> toClients = Arrays.asList(
             new LinkedBlockingQueue<>(), 
             new LinkedBlockingQueue<>(), 
             new LinkedBlockingQueue<>(), 
@@ -27,45 +27,15 @@ public class ServerTransmitter {
     }
     
     /**
-     * Sends a client a message with a string content
-     * @param clientID ID of client (0-3)
-     * @param isExternal true if message should be relayed to client, false if
-     * message is directed to client handler to maintain gamestate
-     * @param message message to be sent, in an appropriate
-     * protocol
-     * @throws InterruptedException 
-     */
-    public void informClient(int clientID, boolean isExternal, String message) throws InterruptedException{
-        toClients.get(clientID).put(
-                new Message("Server", "Client "+clientID, isExternal, message));
-    }
-    
-    /**
      * Sends a client a message containing an internalmessage
      * @param clientID ID of client (0-3)
-     * @param isExternal true if message should be relayed to client, false if
-     * message is directed to client handler to maintain gamestate
      * @param intMes internalmessage to be sent
      * @throws InterruptedException
      */
-    public void informClient(int clientID, boolean isExternal, InternalMessage intMes) throws InterruptedException {
-    	toClients.get(clientID).put(new Message("Server", "Client "+clientID, isExternal, intMes));
+    public void informClient(int clientID, InternalMessage message) throws InterruptedException {
+    	toClients.get(clientID).put(message);
     }
 
-    /**
-     * Sends all clients a string message
-     * @param isExternal true if message should be relayed to client, false if
-     * message is directed to client handler to maintain gamestate
-     * @param message message to be sent, in an appropriate 
-     * protocol
-     * @throws InterruptedExceptionj
-     */
-    public void informAllClients(boolean isExternal, String message) throws InterruptedException{
-        for (int i=0; i<4; i++){
-            informClient(i, isExternal, message);
-        }
-    }
-    
     /**
      * Sends all clients an InternalMessage message
      * @param isExternal true if message should be relayed to client, false if
@@ -73,24 +43,26 @@ public class ServerTransmitter {
      * @param intMes InternalMessage content
      * @throws InterruptedExceptionj
      */
-    public void informAllClients(boolean isExternal, InternalMessage intMes) throws InterruptedException {
+    public void informAllClients(InternalMessage message) throws InterruptedException {
     	for (int i = 0; i < 4; i++) {
-    		informClient(i, isExternal, intMes);
+    		informClient(i, message);
     	}
     }
     
-    /**
-     * Sends all clients a message depending on the type of player (client/AI)
-     * @param isExternal true if message should be relayed to client, false if 
-     * message is directed to client handler to maintain gamestate
-     * @param messages ArrayList of messages to be sent
-     * @throws InterruptedException
-     */
-    public void informAllClients(boolean isExternal, ArrayList<String> messages) throws InterruptedException {
-    	for (int i=0; i<4; i++){
-            informClient(i, isExternal, messages.get(i));
-        }
-    }
+// all clients get the same kind of messages now, so this is unnecessary?
+    
+//    /**
+//     * Sends all clients a message depending on the type of player (client/AI)
+//     * @param isExternal true if message should be relayed to client, false if 
+//     * message is directed to client handler to maintain gamestate
+//     * @param messages ArrayList of messages to be sent
+//     * @throws InterruptedException
+//     */
+//    public void informAllClients(boolean isExternal, ArrayList<String> messages) throws InterruptedException {
+//    	for (int i=0; i<4; i++){
+//            informClient(i, isExternal, messages.get(i));
+//        }
+//    }
     
     /**
      * Listens for messages from clients
