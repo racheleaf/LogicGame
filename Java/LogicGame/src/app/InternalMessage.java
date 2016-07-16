@@ -21,6 +21,7 @@ public class InternalMessage {
 	 * declare: "declare"
 	 * final: "disconnect"
 	 * board view: "board"
+	 * misc text: "misc"
 	 */
 	private final String type;
 	
@@ -41,14 +42,15 @@ public class InternalMessage {
 	private final Optional<Integer> targetPlayer;
 	private final Optional<Integer> guessRank;
 	private final Optional<Boolean> guessCorrect;
-
 	// present only for board
     private final Optional<String> boardView;
+    // present only for misc
+    private final Optional<String> miscContent;
 	
 	// for convenience
 	private static final Set<String> VALID_TYPES = 
 	        new HashSet<>(Arrays.asList("setup","begingame","topass","toshow","toguess",
-	                "pass","show","guess","declare","disconnect","board"));
+	                "pass","show","guess","declare","disconnect","board","misc"));
     private static final Set<Integer> VALID_PLAYER_IDS= 
             new HashSet<>(Arrays.asList(0,1,2,3));
     private static final Set<Integer> VALID_CARD_POSITIONS= 
@@ -68,6 +70,7 @@ public class InternalMessage {
 	        assert(!guessRank.isPresent());
 	        assert(!guessCorrect.isPresent());
 	        assert(!boardView.isPresent());
+	        assert(!miscContent.isPresent());
 	    }
 	    else if (type.equals("topass") || type.equals("toshow") || type.equals("toguess") || type.equals("declare") ){
 	        assert(playerID.isPresent() && VALID_PLAYER_IDS.contains(playerID.get()));
@@ -76,6 +79,7 @@ public class InternalMessage {
 	        assert(!guessRank.isPresent());
 	        assert(!guessCorrect.isPresent());
 	        assert(!boardView.isPresent());
+	        assert(!miscContent.isPresent());
 	    }
 	    else if (type.equals("pass") || type.equals("show")){
 	        assert(playerID.isPresent() && VALID_PLAYER_IDS.contains(playerID.get()));
@@ -83,6 +87,7 @@ public class InternalMessage {
 	        assert(!targetPlayer.isPresent());
 	        assert(!guessCorrect.isPresent());
 	        assert(!boardView.isPresent());
+	        assert(!miscContent.isPresent());
 	    }
 	    else if (type.equals("guess")){
 	        assert(playerID.isPresent() && VALID_PLAYER_IDS.contains(playerID.get()));
@@ -91,6 +96,7 @@ public class InternalMessage {
             assert(guessRank.isPresent() && VALID_GUESS_RANKS.contains(guessRank.get()));
             assert(guessCorrect.isPresent());
             assert(!boardView.isPresent());
+            assert(!miscContent.isPresent());
             assert((playerID.get() + targetPlayer.get())%2 == 1); // guessing player and target on opposite teams 
 	    }
 	    else if(type.equals("board")){
@@ -100,7 +106,17 @@ public class InternalMessage {
             assert(!guessRank.isPresent());
             assert(!guessCorrect.isPresent());
             assert(boardView.isPresent());
+            assert(!miscContent.isPresent());
         }
+	    else if(type.equals("misc")){
+            assert(!playerID.isPresent());
+            assert(!cardPosition.isPresent());
+            assert(!targetPlayer.isPresent());
+            assert(!guessRank.isPresent());
+            assert(!guessCorrect.isPresent());
+            assert(!boardView.isPresent());
+            assert(miscContent.isPresent());	        
+	    }
         else{
             System.err.println(this);
 	        throw new RuntimeException("Should not get here");
@@ -119,6 +135,7 @@ public class InternalMessage {
 		this.guessRank = Optional.empty();
 		this.guessCorrect = Optional.empty();
 		this.boardView = Optional.empty();
+		this.miscContent = Optional.empty();
 		this.checkRep();
 	}
 	
@@ -135,6 +152,7 @@ public class InternalMessage {
 		this.guessRank = Optional.empty();
 		this.guessCorrect = Optional.empty();
 		this.boardView = Optional.empty();
+		this.miscContent = Optional.empty();
 		this.checkRep();
 	}
 	
@@ -152,6 +170,7 @@ public class InternalMessage {
 		this.guessRank = Optional.empty();
 		this.guessCorrect = Optional.empty();
 		this.boardView = Optional.empty();
+		this.miscContent = Optional.empty();
 		this.checkRep();
 	}
 	
@@ -171,22 +190,34 @@ public class InternalMessage {
 		this.guessRank = Optional.of(guessRank);
 		this.guessCorrect = Optional.of(guessCorrect);
 		this.boardView = Optional.empty();
+		this.miscContent = Optional.empty();
 		this.checkRep();
 	}
 	
 	 /**
-     * Constructor for type "board"
-     * @param type String associated with proper type
+     * Constructor for type "board"/"misc"
+     * @param type "board"/"misc"
      * @param boardView String rep of board
      */
-    public InternalMessage(String type, String boardView) {
+    public InternalMessage(String type, String content) {
         this.type = type;
         this.playerID = Optional.empty();
         this.cardPosition = Optional.empty();
         this.targetPlayer = Optional.empty();
         this.guessRank = Optional.empty();
         this.guessCorrect = Optional.empty();
-        this.boardView = Optional.of(boardView);
+        if (type.equals("board")){
+            this.boardView = Optional.of(content);
+            this.miscContent = Optional.empty();
+        }
+        else if (type.equals("misc")){
+            this.boardView = Optional.empty();
+            this.miscContent = Optional.of(content);
+        }
+        else{
+            throw new RuntimeException("Should not get here");
+        }
+        this.checkRep();
     }
     
     
@@ -234,6 +265,13 @@ public class InternalMessage {
     		return boardView.get();
     	}
     	throw new RuntimeException("Board view does not exist");
+    }
+    
+    public String getHelpContent(){
+        if (miscContent.isPresent()){
+            return miscContent.get();
+        }
+        throw new RuntimeException("Help content does not exist");
     }
 	
 	
@@ -301,6 +339,10 @@ public class InternalMessage {
 		// board
 		else if (type.equals("board")){
 		    return boardView.get();
+		}
+		// misc
+		else if (type.equals("misc")){
+		    return miscContent.get();
 		}
 		else{
 		    throw new RuntimeException("Should not get here.");

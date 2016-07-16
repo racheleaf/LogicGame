@@ -240,18 +240,18 @@ public class LogicServer {
             // if declarer declares wrong, declarer and partner lose
             if (!shouldContinue) {
                 gameBoard.makeAllCardsPublic();
-//TODO                transmitter.informAllClients(true,"Here is a view of all players' cards:");
+                transmitter.informAllClients(new InternalMessage("misc","Here is a view of all players' cards:"));
                 refreshAllClientsViews();
-//                transmitter.informAllClients(true,"Players " + Integer.toString((declarer+1)%4) 
-//                    + " and " + Integer.toString((declarer+3)%4) + " win!");
+                transmitter.informAllClients(new InternalMessage("misc","Players " + Integer.toString((declarer+1)%4) 
+                    + " and " + Integer.toString((declarer+3)%4) + " win!"));
                 transmitter.informAllClients(new InternalMessage("disconnect"));
                 break;
             }
             
             // if all cards have been declared correctly, declarer and partner win
             if (!gameBoard.isMoreToDeclare()) {
-//                transmitter.informAllClients(true,"Player " + declarer + " has declared all cards correctly."); 
-//                transmitter.informAllClients(true,"Players " + Integer.toString(declarer) + " and " + Integer.toString((declarer+2)%4) + " win!");
+                transmitter.informAllClients(new InternalMessage("misc","Player " + declarer + " has declared all cards correctly.")); 
+                transmitter.informAllClients(new InternalMessage("misc","Players " + Integer.toString(declarer) + " and " + Integer.toString((declarer+2)%4) + " win!"));
                 transmitter.informAllClients(new InternalMessage("disconnect"));
                 break;
             }
@@ -280,13 +280,13 @@ public class LogicServer {
         if (!in.matches(regex)){
             // invalid input
             // discard input and return help message
-//TODO            transmitter.informClient(playerID, true, helpMessage);
+            transmitter.informClient(playerID, new InternalMessage("misc", helpMessage));
         }
         else if(in.equals("view")){
             transmitter.informClient(playerID,new InternalMessage("board", gameBoard.showPlayerOwnCards(playerID)));
         }
         else if(in.equals("help")){
-//            transmitter.informClient(playerID, helpMessage);
+            transmitter.informClient(playerID, new InternalMessage("misc",helpMessage));
         }
         else if(in.matches("swap [0-5]")){
             Integer position = Character.getNumericValue(in.charAt(5));
@@ -321,13 +321,13 @@ public class LogicServer {
         if (!in.matches(regex)){
             // invalid input
             // discard input and return help message
-//            transmitter.informClient(playerID, helpMessage);
+            transmitter.informClient(playerID, new InternalMessage("misc",helpMessage));
         }
         else if (in.equals("view")){
             transmitter.informClient(playerID, new InternalMessage("board", gameBoard.showPlayerViewOfBoard(playerID)));
         }
         else if (in.equals("help")){
-//            transmitter.informClient(playerID, helpMessage);
+            transmitter.informClient(playerID, new InternalMessage("misc",helpMessage));
         }
         else if (in.matches("pass [0-5]")){
             // in is of form "pass x" for x in 0-5
@@ -335,8 +335,8 @@ public class LogicServer {
             // player must be in "Pass" state
             if (!playerState.equals("Pass")){
                 
-//TODO                transmitter.informClient(playerID, "Your state is: "+playerState+
-//                        ". You cannot pass right now.");
+                transmitter.informClient(playerID, new InternalMessage("misc","Your state is: "+playerState+
+                        ". You cannot pass right now."));
             }
             else{
                 // TODO enforce: this card cannot be already faceup
@@ -362,8 +362,8 @@ public class LogicServer {
             
             // player must be in "Guess" state
             if (!playerState.equals("Guess")){
-//TODO                transmitter.informClient(playerID, "Your state is: "+playerState+
-//                        ". You cannot guess right now.");
+                transmitter.informClient(playerID, new InternalMessage("misc","Your state is: "+playerState+
+                        ". You cannot guess right now."));
             }     
             else{
                 // TODO enforce: player cannot guess unguessable card
@@ -405,8 +405,8 @@ public class LogicServer {
         else if (in.matches("show [0-5]")){
             // player must be in "Show" state
             if (!playerState.equals("Show")){
-//TODO                transmitter.informClient(playerID, "Your state is: "+playerState+
-//                        ". You cannot show right now.");
+                transmitter.informClient(playerID, new InternalMessage("misc","Your state is: "+playerState+
+                        ". You cannot show right now."));
             }            
             else{
                 // TODO enforce: this card cannot be already faceup
@@ -449,7 +449,7 @@ public class LogicServer {
         if (!in.matches(regex)){
             // invalid input
             // discard input and return help message
-//TODO            transmitter.informClient(playerID, helpMessage);
+            transmitter.informClient(playerID, new InternalMessage("misc",helpMessage));
             return true;
         }
         else if (in.equals("view")){
@@ -457,14 +457,14 @@ public class LogicServer {
             return true;
         }
         else if (in.equals("help")){
-//TODO            transmitter.informClient(playerID, helpMessage);
+            transmitter.informClient(playerID, new InternalMessage("misc",helpMessage));
             return true;
         }
         else if (in.matches("declare [0-3] [0-5] ([1-9]|1[0-2])")) {
         	// check that player can actually declare
         	if (!playerState.equals("Declare")){
-//TODO        	    transmitter.informClient(playerID, true, "Your state is: "+playerState+
-//                        ". You cannot declare right now.");
+        	    transmitter.informClient(playerID, new InternalMessage("misc","Your state is: "+playerState+
+                        ". You cannot declare right now."));
                 return true;
             }
         	
@@ -477,11 +477,9 @@ public class LogicServer {
                 boolean guessCorrect = gameBoard.guess(playerID, targetPlayer, 
                         guessPosition, guessRank);
                 
-                //TODO: make this only go through to clients and not AI
                 if (!guessCorrect) {
-//TODO                    transmitter.informAllClients(true, "Player " + playerID + " incorrectly declared card " + 
-//                			guessPosition + " of player " + targetPlayer + ": " + guessRank 
-//                			+ ".");
+                    transmitter.informAllClients(new InternalMessage("misc","Player " + playerID + " incorrectly declared card " + 
+                			guessPosition + " of player " + targetPlayer + ": " + guessRank + "."));
                 	return false;
                 }
                 
@@ -489,8 +487,8 @@ public class LogicServer {
                 gameBoard.revealCardToAll(targetPlayer, guessPosition);
                 
                 // announce result of action to players
-//TODO                transmitter.informAllClients(true, "Player " + playerID + " correctly declared card "+
-//                        guessPosition + " of player " + targetPlayer+": " + guessRank + "!");
+                transmitter.informAllClients(new InternalMessage("misc","Player " + playerID + " correctly declared card "+
+                        guessPosition + " of player " + targetPlayer+": " + guessRank + "!"));
                 refreshAllClientsViews();
                 
                 return true;
@@ -510,7 +508,7 @@ public class LogicServer {
     public static void main(String[] args){
         /*TODO provide command line interface??*/
         
-        // TEMP TEMP VERY TEMP
+        // TODO TEMP TEMP VERY TEMP
         // GO HERE TO SET WHICH PLAYERS ARE AI AND WHICH ARE HUMAN 
         List<Boolean> isAI = Arrays.asList(false, false, false, false);
         
