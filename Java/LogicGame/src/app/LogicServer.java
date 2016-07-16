@@ -84,7 +84,7 @@ public class LogicServer {
         for (int player=0; player<4; player++){
         	
             transmitter.informClient(player,
-                    new InternalMessage("board", gameBoard.showPlayerViewOfBoard(player)));
+                    new InternalMessage(player, "board", gameBoard.showPlayerViewOfBoard(player)));
         }
     }
     
@@ -149,11 +149,11 @@ public class LogicServer {
      * @throws InterruptedException
      */
     private void serveSetupPhase() throws InterruptedException{
-        transmitter.informAllClients(new InternalMessage("setup"));
+        transmitter.informAllClients(new InternalMessage(-1, "setup"));
         
         for (int player=0; player<4; player++){
             transmitter.informClient(player,
-                    new InternalMessage("board", gameBoard.showPlayerOwnCards(player)));
+                    new InternalMessage(player, "board", gameBoard.showPlayerOwnCards(player)));
         }
 
         
@@ -186,7 +186,7 @@ public class LogicServer {
      * @throws InterruptedException
      */
     private void serveMainAndDeclarationPhase() throws InterruptedException{
-        transmitter.informAllClients(new InternalMessage("begingame"));
+        transmitter.informAllClients(new InternalMessage(-1, "begingame"));
 
         // ID of player who declares, to be set when declaration occurs
         int declarer = -1;
@@ -197,7 +197,7 @@ public class LogicServer {
         // Starts the game.  Player 0 is first to guess, so 
         // Player 2 passes first.  
         status.set(2, "Pass");
-        transmitter.informAllClients(new InternalMessage("topass", 2));
+        transmitter.informAllClients(new InternalMessage(-1, "topass", 2));
         
         // continually listens for and responds to clients' 
         // requests until someone declares
@@ -208,7 +208,7 @@ public class LogicServer {
             String messageContent = message.getContent();
             
             if (messageContent.equals("declare")){
-                transmitter.informAllClients(new InternalMessage("declare", senderID));
+                transmitter.informAllClients(new InternalMessage(-1, "declare", senderID));
                 
                 // changes all other players to Inactive mode, and marks declarer in state Declare 
                 for (int i = 0; i < 4; i++) {
@@ -240,19 +240,19 @@ public class LogicServer {
             // if declarer declares wrong, declarer and partner lose
             if (!shouldContinue) {
                 gameBoard.makeAllCardsPublic();
-                transmitter.informAllClients(new InternalMessage("misc","Here is a view of all players' cards:"));
+                transmitter.informAllClients(new InternalMessage(-1, "misc","Here is a view of all players' cards:"));
                 refreshAllClientsViews();
-                transmitter.informAllClients(new InternalMessage("misc","Players " + Integer.toString((declarer+1)%4) 
+                transmitter.informAllClients(new InternalMessage(-1, "misc","Players " + Integer.toString((declarer+1)%4) 
                     + " and " + Integer.toString((declarer+3)%4) + " win!"));
-                transmitter.informAllClients(new InternalMessage("disconnect"));
+                transmitter.informAllClients(new InternalMessage(-1, "disconnect"));
                 break;
             }
             
             // if all cards have been declared correctly, declarer and partner win
             if (!gameBoard.isMoreToDeclare()) {
-                transmitter.informAllClients(new InternalMessage("misc","Player " + declarer + " has declared all cards correctly.")); 
-                transmitter.informAllClients(new InternalMessage("misc","Players " + Integer.toString(declarer) + " and " + Integer.toString((declarer+2)%4) + " win!"));
-                transmitter.informAllClients(new InternalMessage("disconnect"));
+                transmitter.informAllClients(new InternalMessage(-1, "misc","Player " + declarer + " has declared all cards correctly.")); 
+                transmitter.informAllClients(new InternalMessage(-1, "misc","Players " + Integer.toString(declarer) + " and " + Integer.toString((declarer+2)%4) + " win!"));
+                transmitter.informAllClients(new InternalMessage(-1, "disconnect"));
                 break;
             }
         }
@@ -280,18 +280,18 @@ public class LogicServer {
         if (!in.matches(regex)){
             // invalid input
             // discard input and return help message
-            transmitter.informClient(playerID, new InternalMessage("misc", helpMessage));
+            transmitter.informClient(playerID, new InternalMessage(playerID, "misc", helpMessage));
         }
         else if(in.equals("view")){
-            transmitter.informClient(playerID,new InternalMessage("board", gameBoard.showPlayerOwnCards(playerID)));
+            transmitter.informClient(playerID,new InternalMessage(playerID, "board", gameBoard.showPlayerOwnCards(playerID)));
         }
         else if(in.equals("help")){
-            transmitter.informClient(playerID, new InternalMessage("misc",helpMessage));
+            transmitter.informClient(playerID, new InternalMessage(playerID, "misc",helpMessage));
         }
         else if(in.matches("swap [0-5]")){
             Integer position = Character.getNumericValue(in.charAt(5));
             gameBoard.swapTwoEqualCards(playerID, position);
-            transmitter.informClient(playerID, new InternalMessage("board", gameBoard.showPlayerOwnCards(playerID)));
+            transmitter.informClient(playerID, new InternalMessage(playerID, "board", gameBoard.showPlayerOwnCards(playerID)));
         }
         else{
             // should not get here
@@ -321,13 +321,13 @@ public class LogicServer {
         if (!in.matches(regex)){
             // invalid input
             // discard input and return help message
-            transmitter.informClient(playerID, new InternalMessage("misc",helpMessage));
+            transmitter.informClient(playerID, new InternalMessage(playerID, "misc",helpMessage));
         }
         else if (in.equals("view")){
-            transmitter.informClient(playerID, new InternalMessage("board", gameBoard.showPlayerViewOfBoard(playerID)));
+            transmitter.informClient(playerID, new InternalMessage(playerID, "board", gameBoard.showPlayerViewOfBoard(playerID)));
         }
         else if (in.equals("help")){
-            transmitter.informClient(playerID, new InternalMessage("misc",helpMessage));
+            transmitter.informClient(playerID, new InternalMessage(playerID, "misc",helpMessage));
         }
         else if (in.matches("pass [0-5]")){
             // in is of form "pass x" for x in 0-5
@@ -335,7 +335,7 @@ public class LogicServer {
             // player must be in "Pass" state
             if (!playerState.equals("Pass")){
                 
-                transmitter.informClient(playerID, new InternalMessage("misc","Your state is: "+playerState+
+                transmitter.informClient(playerID, new InternalMessage(playerID, "misc","Your state is: "+playerState+
                         ". You cannot pass right now."));
             }
             else{
@@ -347,13 +347,13 @@ public class LogicServer {
                 gameBoard.revealCardToPartner(playerID, position);
                 
                 // announce result of action to players
-                transmitter.informAllClients(new InternalMessage("pass", playerID, position));
+                transmitter.informAllClients(new InternalMessage(-1, "pass", playerID, position));
                 refreshAllClientsViews();
                 
                 // update and announce whose turn it is 
                 status.set(playerID, "Inactive");
                 int partnerID = (playerID+2)%4;
-                transmitter.informAllClients(new InternalMessage("toguess", partnerID));
+                transmitter.informAllClients(new InternalMessage(-1, "toguess", partnerID));
                 status.set(partnerID, "Guess");
             }
         }
@@ -362,7 +362,7 @@ public class LogicServer {
             
             // player must be in "Guess" state
             if (!playerState.equals("Guess")){
-                transmitter.informClient(playerID, new InternalMessage("misc","Your state is: "+playerState+
+                transmitter.informClient(playerID, new InternalMessage(playerID, "misc","Your state is: "+playerState+
                         ". You cannot guess right now."));
             }     
             else{
@@ -381,31 +381,31 @@ public class LogicServer {
                     gameBoard.revealCardToAll(targetPlayer, guessPosition);
                     
                     // announce result of action to players
-                    transmitter.informAllClients(new InternalMessage("guess", playerID, guessPosition, targetPlayer, guessRank, guessCorrect));
+                    transmitter.informAllClients(new InternalMessage(-1, "guess", playerID, guessPosition, targetPlayer, guessRank, guessCorrect));
                     refreshAllClientsViews();
                     
                     // update and announce whose turn it is
                     status.set(playerID, "Inactive");
                     int nextPlayerID = (playerID+3)%4;
-                    transmitter.informAllClients(new InternalMessage("topass", nextPlayerID));
+                    transmitter.informAllClients(new InternalMessage(-1, "topass", nextPlayerID));
                     status.set(nextPlayerID, "Pass");
                 }
                 else{
                 	
                     // announce result of action to players
-                    transmitter.informAllClients(new InternalMessage("guess", playerID, guessPosition, targetPlayer, guessRank, guessCorrect));;
+                    transmitter.informAllClients(new InternalMessage(-1, "guess", playerID, guessPosition, targetPlayer, guessRank, guessCorrect));;
                     refreshAllClientsViews();
                     
                     // update player's status, player must now show a card
                     status.set(playerID, "Show");
-                    transmitter.informAllClients(new InternalMessage("toshow", playerID));
+                    transmitter.informAllClients(new InternalMessage(-1, "toshow", playerID));
                 }
             }
         }
         else if (in.matches("show [0-5]")){
             // player must be in "Show" state
             if (!playerState.equals("Show")){
-                transmitter.informClient(playerID, new InternalMessage("misc","Your state is: "+playerState+
+                transmitter.informClient(playerID, new InternalMessage(playerID, "misc","Your state is: "+playerState+
                         ". You cannot show right now."));
             }            
             else{
@@ -417,13 +417,13 @@ public class LogicServer {
                 gameBoard.revealCardToAll(playerID, position);
                 
                 // announce result of action to players
-                transmitter.informAllClients(new InternalMessage("show", playerID, position));
+                transmitter.informAllClients(new InternalMessage(-1, "show", playerID, position));
                 refreshAllClientsViews();
                 
                 // update and announce whose turn it is
                 status.set(playerID, "Inactive");
                 int nextPlayerID = (playerID+3)%4;
-                transmitter.informAllClients(new InternalMessage("topass", nextPlayerID));
+                transmitter.informAllClients(new InternalMessage(-1, "topass", nextPlayerID));
                 status.set(nextPlayerID, "Pass");
             }
         }
@@ -449,21 +449,21 @@ public class LogicServer {
         if (!in.matches(regex)){
             // invalid input
             // discard input and return help message
-            transmitter.informClient(playerID, new InternalMessage("misc",helpMessage));
+            transmitter.informClient(playerID, new InternalMessage(playerID, "misc",helpMessage));
             return true;
         }
         else if (in.equals("view")){
-            transmitter.informClient(playerID, new InternalMessage("board", gameBoard.showPlayerViewOfBoard(playerID)));
+            transmitter.informClient(playerID, new InternalMessage(playerID, "board", gameBoard.showPlayerViewOfBoard(playerID)));
             return true;
         }
         else if (in.equals("help")){
-            transmitter.informClient(playerID, new InternalMessage("misc",helpMessage));
+            transmitter.informClient(playerID, new InternalMessage(playerID, "misc",helpMessage));
             return true;
         }
         else if (in.matches("declare [0-3] [0-5] ([1-9]|1[0-2])")) {
         	// check that player can actually declare
         	if (!playerState.equals("Declare")){
-        	    transmitter.informClient(playerID, new InternalMessage("misc","Your state is: "+playerState+
+        	    transmitter.informClient(playerID, new InternalMessage(playerID, "misc","Your state is: "+playerState+
                         ". You cannot declare right now."));
                 return true;
             }
@@ -478,7 +478,7 @@ public class LogicServer {
                         guessPosition, guessRank);
                 
                 if (!guessCorrect) {
-                    transmitter.informAllClients(new InternalMessage("misc","Player " + playerID + " incorrectly declared card " + 
+                    transmitter.informAllClients(new InternalMessage(-1, "misc","Player " + playerID + " incorrectly declared card " + 
                 			guessPosition + " of player " + targetPlayer + ": " + guessRank + "."));
                 	return false;
                 }
@@ -487,7 +487,7 @@ public class LogicServer {
                 gameBoard.revealCardToAll(targetPlayer, guessPosition);
                 
                 // announce result of action to players
-                transmitter.informAllClients(new InternalMessage("misc","Player " + playerID + " correctly declared card "+
+                transmitter.informAllClients(new InternalMessage(-1, "misc","Player " + playerID + " correctly declared card "+
                         guessPosition + " of player " + targetPlayer+": " + guessRank + "!"));
                 refreshAllClientsViews();
                 

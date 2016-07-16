@@ -7,12 +7,12 @@ import java.util.Set;
 
 /**
  * A class of messages from the LogicServer to ClientHandlerThreads
- * TODO not yet incorporated into the app
- * TODO all the get methods
  */
 
 public class InternalMessage {
 	
+    private final String recipient;
+    
 	/*
 	 * can equal --
 	 * instructions: "setup" "begingame" 
@@ -48,7 +48,9 @@ public class InternalMessage {
     private final Optional<String> miscContent;
 	
 	// for convenience
-	private static final Set<String> VALID_TYPES = 
+    private static final Set<String> VALID_RECIPIENTS = 
+            new HashSet<>(Arrays.asList("CLIENT_0","CLIENT_1","CLIENT_2","CLIENT_3","ALL_CLIENTS"));
+    private static final Set<String> VALID_TYPES = 
 	        new HashSet<>(Arrays.asList("setup","begingame","topass","toshow","toguess",
 	                "pass","show","guess","declare","disconnect","board","misc"));
     private static final Set<Integer> VALID_PLAYER_IDS= 
@@ -62,7 +64,9 @@ public class InternalMessage {
 	 * A bunch of asserts to make sure an InternalMessage is well-formed.  
 	 */
 	private void checkRep(){
+	    assert(VALID_RECIPIENTS.contains(recipient));
 	    assert(VALID_TYPES.contains(type));
+	    System.err.println(this);
 	    if (type.equals("setup") || type.equals("begingame") || type.equals("disconnect") ){
 	        assert(!playerID.isPresent());
 	        assert(!cardPosition.isPresent());
@@ -118,16 +122,22 @@ public class InternalMessage {
             assert(miscContent.isPresent());	        
 	    }
         else{
-            System.err.println(this);
 	        throw new RuntimeException("Should not get here");
 	    }
 	}
 	
 	/**
-	 * Constructor for "setup", "begingame", or "disconnect
+	 * Constructor for "setup", "begingame", or "disconnect"
+	 * @param recipient 0-3 for a particular client, or -1 for all
 	 * @param type "setup"/"begingame"/"disconnect"
 	 */
-	public InternalMessage(String type) {
+	public InternalMessage(int recipient, String type) {
+	    if (recipient == -1){
+	        this.recipient = "ALL_CLIENTS";
+	    }
+	    else{
+	        this.recipient = "CLIENT_"+recipient;
+	    }
 		this.type = type;
 		this.playerID = Optional.empty();
 		this.cardPosition = Optional.empty();
@@ -141,10 +151,17 @@ public class InternalMessage {
 	
 	/**
 	 * Constructor for toMove's or declare
+	 * @param recipient 0-3 for a particular client, or -1 for all
 	 * @param type "topass"/"toshow"/"toguess"/"declare"
 	 * @param playerID if a turn type, the playerID of the player who is supposed to move / if "declare", playerID of player declaring
 	 */
-	public InternalMessage(String type, int playerID) {
+	public InternalMessage(int recipient, String type, int playerID) {
+        if (recipient == -1){
+            this.recipient = "ALL_CLIENTS";
+        }
+        else{
+            this.recipient = "CLIENT_"+recipient;
+        }	    
 		this.type = type;
 		this.playerID = Optional.of(playerID);
 		this.cardPosition = Optional.empty();
@@ -158,11 +175,18 @@ public class InternalMessage {
 	
 	/**
 	 * Constructor for types "pass" or "show"
-	 * @param move String, either "pass" or "show"
+	 * @param recipient 0-3 for a particular client, or -1 for all
+	 * @param type "pass"/"show"
 	 * @param playerID playerID of player who moved
 	 * @param cardPosition the position of the card passed or showed
 	 */
-	public InternalMessage(String type, int playerID, int cardPosition){
+	public InternalMessage(int recipient, String type, int playerID, int cardPosition){
+        if (recipient == -1){
+            this.recipient = "ALL_CLIENTS";
+        }
+        else{
+            this.recipient = "CLIENT_"+recipient;
+        }
 		this.type = type;
 		this.playerID = Optional.of(playerID);
         this.cardPosition = Optional.of(cardPosition);
@@ -176,13 +200,20 @@ public class InternalMessage {
 	
 	/**
 	 * Constructor for type "guess"
+	 * @param recipient 0-3 for a particular client, or -1 for all
 	 * @param type "guess"
 	 * @param playerID the player who's guessing
 	 * @param cardPosition position of card being guessed
 	 * @param targetPlayer ID of player being guessed on
 	 * @param guessRank rank of guess 
 	 */
-	public InternalMessage(String type, int playerID, int cardPosition, int targetPlayer, int guessRank, boolean guessCorrect) {
+	public InternalMessage(int recipient, String type, int playerID, int cardPosition, int targetPlayer, int guessRank, boolean guessCorrect) {
+        if (recipient == -1){
+            this.recipient = "ALL_CLIENTS";
+        }
+        else{
+            this.recipient = "CLIENT_"+recipient;
+        }
 		this.type = type;
 		this.playerID = Optional.of(playerID);
 		this.cardPosition = Optional.of(cardPosition);
@@ -196,10 +227,17 @@ public class InternalMessage {
 	
 	 /**
      * Constructor for type "board"/"misc"
+     * @param recipient 0-3 for a particular client, or -1 for all
      * @param type "board"/"misc"
      * @param boardView String rep of board
      */
-    public InternalMessage(String type, String content) {
+    public InternalMessage(int recipient, String type, String content) {
+        if (recipient == -1){
+            this.recipient = "ALL_CLIENTS";
+        }
+        else{
+            this.recipient = "CLIENT_"+recipient;
+        }
         this.type = type;
         this.playerID = Optional.empty();
         this.cardPosition = Optional.empty();
@@ -220,6 +258,10 @@ public class InternalMessage {
         this.checkRep();
     }
     
+    
+    public String getRecipient(){
+        return recipient;
+    }
     
     public String getType() {
 		return type;

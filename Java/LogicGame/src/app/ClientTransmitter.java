@@ -46,6 +46,7 @@ public class ClientTransmitter {
      */
     public InternalMessage listenServer() throws InterruptedException{
         InternalMessage message = fromServer.take();
+        assert(message.getRecipient().equals("CLIENT_"+playerID) || message.getRecipient().equals("ALL_CLIENTS"));
         System.err.println("Received: server --> client " + playerID + ": " + message.toString());
         return message;
     }
