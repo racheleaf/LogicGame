@@ -56,11 +56,6 @@ public class LogicServer {
     // next player to non-Inactive.  
     private final List<String> status = Arrays.asList("Inactive","Inactive","Inactive","Inactive");
     
-    // generates messages for the client/AI
-    // first must set gamestate to be one of the valid states, then use gamestate.getMessages() to get ArrayList of messages to be distributed
-    private final GameState gamestate;
-    
-    
     /**
      * Make a LogicServer that listens for connections on a specified port.   
      * 
@@ -72,7 +67,6 @@ public class LogicServer {
         serverSocket = new ServerSocket(port);
         assert(isAI.size()==4);
         this.isAI = isAI;
-        gamestate = new GameState(isAI);
     }
     
     /**
@@ -82,7 +76,6 @@ public class LogicServer {
      */
     private void refreshAllClientsViews() throws InterruptedException{
         for (int player=0; player<4; player++){
-        	
             transmitter.informClient(player,
                     new InternalMessage(player, "board", gameBoard.showPlayerViewOfBoard(player)));
         }

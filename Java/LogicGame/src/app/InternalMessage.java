@@ -61,7 +61,7 @@ public class InternalMessage {
             new HashSet<>(Arrays.asList(1,2,3,4,5,6,7,8,9,10,11,12));
 
 	/**
-	 * A bunch of asserts to make sure an InternalMessage is well-formed.  
+	 * Checks that an InternalMessage is well-formed.  
 	 */
 	private void checkRep(){
 	    assert(VALID_RECIPIENTS.contains(recipient));
@@ -258,15 +258,26 @@ public class InternalMessage {
         this.checkRep();
     }
     
-    
+    /**
+     * Gets recipient of this message
+     * @return ''
+     */
     public String getRecipient(){
         return recipient;
     }
     
+    /**
+     * Gets type of this message
+     * @return ''
+     */
     public String getType() {
 		return type;
 	}
     
+    /**
+     * Gets playerID if type = topass, toshow, toguess, declare, pass, show, guess
+     * @return ''
+     */
     public int getPlayerID() {
     	if (playerID.isPresent()) {
     		return playerID.get();
@@ -274,6 +285,10 @@ public class InternalMessage {
     	throw new RuntimeException("Player ID does not exist");
     }
     
+    /**
+     * Gets cardPosition if type = pass, show, guess; else throws exception
+     * @return ''
+     */
     public int getCardPosition() {
     	if (cardPosition.isPresent()) {
     		return cardPosition.get();
@@ -281,6 +296,11 @@ public class InternalMessage {
     	throw new RuntimeException("Card position does not exist");
     }
     
+    /**
+     * Gets the target player if type = guess; else throws exception
+     * @return ''
+     * 
+     */
     public int getTargetPlayer() {
     	if (targetPlayer.isPresent()) {
     		return targetPlayer.get();
@@ -288,6 +308,10 @@ public class InternalMessage {
     	throw new RuntimeException("Target player does not exist");
     }
     
+    /**
+     * Gets the value of guessRank if type = guess; else throws exception
+     * @return ''
+     */
     public int getGuessRank() {
     	if (guessRank.isPresent()) {
     		return guessRank.get();
@@ -295,6 +319,10 @@ public class InternalMessage {
     	throw new RuntimeException("Guess rank does not exist");
     }
     
+    /**
+     * Gets the value of guessCorrect if type = guess; else throws exception
+     * @return ''
+     */
     public boolean getGuessCorrect() {
     	if (guessCorrect.isPresent()) {
     		return guessCorrect.get();
@@ -302,6 +330,10 @@ public class InternalMessage {
     	throw new RuntimeException("GuessCorrect does not exist");
     }
     
+    /**
+     * Gets board view if this is a board message; else throws exception
+     * @return ''
+     */
     public String getBoardView() {
     	if (boardView.isPresent()) {
     		return boardView.get();
@@ -309,11 +341,15 @@ public class InternalMessage {
     	throw new RuntimeException("Board view does not exist");
     }
     
-    public String getHelpContent(){
+    /**
+     * Gets content if this is a misc message; else throws exception. 
+     * @return ''
+     */
+    public String getMiscContent(){
         if (miscContent.isPresent()){
             return miscContent.get();
         }
-        throw new RuntimeException("Help content does not exist");
+        throw new RuntimeException("Misc content does not exist");
     }
 	
 	
@@ -390,67 +426,4 @@ public class InternalMessage {
 		    throw new RuntimeException("Should not get here.");
 		}
 	}
-	
-	
-	
-// AI can now parse directly, so this isn't necessary -- also clients can parse via toString
-    
-//  public ArrayList<String> getMessages(List<Boolean> isAI) {
-//      ArrayList<String> messages = new ArrayList<String>();
-//      for (int i = 0; i < 4; i++) {
-//          if (isAI.get(i)) {
-//              messages.add(getMessageAI());
-//          }
-//          else {
-//              messages.add(getMessageClient());
-//          }
-//      }
-//      return messages;
-//  }
-
-//  private String getMessageAI() {
-//      // instructions
-//      if (type.equals("setup")) {
-//          return "setup";
-//      }
-//      if (type.equals("begingame")) {
-//          return "begingame";
-//      }
-//      // turn
-//      if (type.equals("topass")) {
-//          return "topass " + playerID;
-//      }
-//      if (type.equals("toshow")) {
-//          return "toshow " + playerID;
-//      }
-//      if (type.equals("toguess")) {
-//          return "toguess " + playerID;
-//      }
-//      // move
-//      if (type.equals("pass")) {
-//          return "pass " + playerID + " " + x;
-//      }
-//      if (type.equals("show")) {
-//          return "show " + playerID + " " + x;
-//      }
-//      if (type.equals("guess")) {
-//          String rep = "guess " + playerID + " " + xyz[0] + " " + xyz[1] + " " + xyz[2] + " ";
-//          if (xyz[3] == 1) {
-//              rep += "correct";
-//              return rep;
-//          }
-//          rep += "incorrect";
-//          return rep;
-//      }
-//      if (type.equals("declare")) {
-//          return "declare " + playerID;
-//      }
-//      // final
-//      if (type.equals("disconnect")) {
-//          return "disconnect";
-//      }
-//      return "";
-//  } 
-
-	
 }
