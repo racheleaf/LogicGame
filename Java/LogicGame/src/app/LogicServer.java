@@ -345,8 +345,8 @@ public class LogicServer {
                 // update and announce whose turn it is 
                 status.set(playerID, "Inactive");
                 int partnerID = (playerID+2)%4;
-                transmitter.informAllClients(new InternalMessage(-1, "toguess", partnerID));
                 status.set(partnerID, "Guess");
+                transmitter.informAllClients(new InternalMessage(-1, "toguess", partnerID));
             }
         }
         else if (in.matches("guess [0-3] [0-5] ([1-9]|1[0-2])")){
@@ -369,7 +369,7 @@ public class LogicServer {
                     transmitter.informClient(playerID, new InternalMessage(playerID,"misc",
                             "You cannot guess your partner's card."));
                 }
-                else if(gameBoard.isFaceup(targetPlayer, guessPosition)){
+                else if(gameBoard.isFaceUp(targetPlayer, guessPosition)){
                     transmitter.informClient(playerID, new InternalMessage(playerID,"misc",
                             "You cannot guess a card that's already faceup."));
                 }
@@ -388,8 +388,8 @@ public class LogicServer {
                         // update and announce whose turn it is
                         status.set(playerID, "Inactive");
                         int nextPlayerID = (playerID+3)%4;
-                        transmitter.informAllClients(new InternalMessage(-1, "topass", nextPlayerID));
                         status.set(nextPlayerID, "Pass");
+                        transmitter.informAllClients(new InternalMessage(-1, "topass", nextPlayerID));
                     }
                     else{
                         
@@ -397,9 +397,20 @@ public class LogicServer {
                         transmitter.informAllClients(new InternalMessage(-1, "guess", playerID, guessPosition, targetPlayer, guessRank, guessCorrect));;
                         refreshAllClientsViews();
                         
-                        // update player's status, player must now show a card
-                        status.set(playerID, "Show");
-                        transmitter.informAllClients(new InternalMessage(-1, "toshow", playerID));
+                        // update player's status: player must now show a card,
+                        // unless all his cards are already face up
+                        if (!gameBoard.allCardsFaceUp(playerID)){
+                            status.set(playerID, "Show");
+                            transmitter.informAllClients(new InternalMessage(-1, "toshow", playerID));                            
+                        }
+                        else{
+                            transmitter.informAllClients(new InternalMessage(-1, "misc",
+                                    "Player "+playerID+"has shown all his cards!"));
+                            int nextPlayerID = (playerID+3)%4;
+                            status.set(nextPlayerID, "Pass");
+                            transmitter.informAllClients(new InternalMessage(-1, "topass", nextPlayerID));
+                        }
+                        
                     }                    
                 }
             }
@@ -415,18 +426,24 @@ public class LogicServer {
                 // parse input
                 Integer position = Character.getNumericValue(in.charAt(5));
                 
-                // update game state
-                gameBoard.revealCardToAll(playerID, position);
-                
-                // announce result of action to players
-                transmitter.informAllClients(new InternalMessage(-1, "show", playerID, position));
-                refreshAllClientsViews();
-                
-                // update and announce whose turn it is
-                status.set(playerID, "Inactive");
-                int nextPlayerID = (playerID+3)%4;
-                transmitter.informAllClients(new InternalMessage(-1, "topass", nextPlayerID));
-                status.set(nextPlayerID, "Pass");
+                if (gameBoard.isFaceUp(playerID, position)){
+                    transmitter.informClient(playerID, new InternalMessage(playerID, "misc",
+                            "You cannot show an already-faceup card!"));
+                }
+                else{
+                    // update game state
+                    gameBoard.revealCardToAll(playerID, position);
+                    
+                    // announce result of action to players
+                    transmitter.informAllClients(new InternalMessage(-1, "show", playerID, position));
+                    refreshAllClientsViews();
+                    
+                    // update and announce whose turn it is
+                    status.set(playerID, "Inactive");
+                    int nextPlayerID = (playerID+3)%4;
+                    status.set(nextPlayerID, "Pass");    
+                    transmitter.informAllClients(new InternalMessage(-1, "topass", nextPlayerID));
+                }
             }
         }
         else{

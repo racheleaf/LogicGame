@@ -105,10 +105,23 @@ public class GameBoard {
      * @param playerID 0-3, ID of player
      * @param card 0-5, representing position of card to be revealed
      */
-    public boolean isFaceup(int playerID, int card){
+    public boolean isFaceUp(int playerID, int card){
         Card c = hands.get(playerID).getCardAt(card);
         for (int player=0; player<4; player++){
             if (!c.isVisible(player)){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns whether all of a player's cards are faceup (visible to everyone) 
+     * @param playerID 0-3, ID of player
+     */
+    public boolean allCardsFaceUp(int playerID){
+        for (int position=0; position<6; position++){
+            if (! isFaceUp(playerID, position)){
                 return false;
             }
         }
