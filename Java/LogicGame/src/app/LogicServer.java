@@ -332,7 +332,6 @@ public class LogicServer {
                         ". You cannot pass right now."));
             }
             else{
-                // TODO enforce: this card cannot be already faceup
                 // parse input
                 Integer position = Character.getNumericValue(in.charAt(5));
                 
@@ -366,32 +365,42 @@ public class LogicServer {
                 int guessPosition = Integer.valueOf(tokenizedInput[2]);
                 int guessRank = Integer.valueOf(tokenizedInput[3]);
                 
-                boolean guessCorrect = gameBoard.guess(playerID, targetPlayer, 
-                        guessPosition, guessRank);
-                
-                if (guessCorrect){
-                    // alter game state
-                    gameBoard.revealCardToAll(targetPlayer, guessPosition);
-                    
-                    // announce result of action to players
-                    transmitter.informAllClients(new InternalMessage(-1, "guess", playerID, guessPosition, targetPlayer, guessRank, guessCorrect));
-                    refreshAllClientsViews();
-                    
-                    // update and announce whose turn it is
-                    status.set(playerID, "Inactive");
-                    int nextPlayerID = (playerID+3)%4;
-                    transmitter.informAllClients(new InternalMessage(-1, "topass", nextPlayerID));
-                    status.set(nextPlayerID, "Pass");
+                if ((targetPlayer + playerID)%2==0){
+                    transmitter.informClient(playerID, new InternalMessage(playerID,"misc",
+                            "You cannot guess your partner's card."));
+                }
+                else if(gameBoard.isFaceup(targetPlayer, guessPosition)){
+                    transmitter.informClient(playerID, new InternalMessage(playerID,"misc",
+                            "You cannot guess a card that's already faceup."));
                 }
                 else{
-                	
-                    // announce result of action to players
-                    transmitter.informAllClients(new InternalMessage(-1, "guess", playerID, guessPosition, targetPlayer, guessRank, guessCorrect));;
-                    refreshAllClientsViews();
+                    boolean guessCorrect = gameBoard.guess(playerID, targetPlayer, 
+                            guessPosition, guessRank);
                     
-                    // update player's status, player must now show a card
-                    status.set(playerID, "Show");
-                    transmitter.informAllClients(new InternalMessage(-1, "toshow", playerID));
+                    if (guessCorrect){
+                        // alter game state
+                        gameBoard.revealCardToAll(targetPlayer, guessPosition);
+                        
+                        // announce result of action to players
+                        transmitter.informAllClients(new InternalMessage(-1, "guess", playerID, guessPosition, targetPlayer, guessRank, guessCorrect));
+                        refreshAllClientsViews();
+                        
+                        // update and announce whose turn it is
+                        status.set(playerID, "Inactive");
+                        int nextPlayerID = (playerID+3)%4;
+                        transmitter.informAllClients(new InternalMessage(-1, "topass", nextPlayerID));
+                        status.set(nextPlayerID, "Pass");
+                    }
+                    else{
+                        
+                        // announce result of action to players
+                        transmitter.informAllClients(new InternalMessage(-1, "guess", playerID, guessPosition, targetPlayer, guessRank, guessCorrect));;
+                        refreshAllClientsViews();
+                        
+                        // update player's status, player must now show a card
+                        status.set(playerID, "Show");
+                        transmitter.informAllClients(new InternalMessage(-1, "toshow", playerID));
+                    }                    
                 }
             }
         }

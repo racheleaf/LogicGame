@@ -1,3 +1,4 @@
+
 package game;
 
 import java.util.*;
@@ -49,15 +50,11 @@ public class GameBoard {
     	
     	// compares rank of each card at adjacent positions to the rank of chosen card
     	// if the ranks are equal, then the cards are swapped
-    	if (card > 0) {
-    		if (playerHand.getCardAt(card-1).getRank() == rankOfCard) {
-    			playerHand.swapTwoCards(card-1, card);
-    		}
+    	if (card > 0 && playerHand.getCardAt(card-1).getRank() == rankOfCard) {
+    		playerHand.swapTwoCards(card-1, card);
     	}
-    	else if (card < playerHand.size()-1) {
-    		if (playerHand.getCardAt(card+1).getRank() == rankOfCard) {
-    			playerHand.swapTwoCards(card, card+1);
-    		}
+    	else if (card < playerHand.size()-1 && playerHand.getCardAt(card+1).getRank() == rankOfCard) {
+    	    playerHand.swapTwoCards(card, card+1);
     	}
     }
 
@@ -103,6 +100,20 @@ public class GameBoard {
     	}
     }
     
+    /**
+     * Returns whether a card is faceup (i.e. fully visible to everyone) 
+     * @param playerID 0-3, ID of player
+     * @param card 0-5, representing position of card to be revealed
+     */
+    public boolean isFaceup(int playerID, int card){
+        Card c = hands.get(playerID).getCardAt(card);
+        for (int player=0; player<4; player++){
+            if (!c.isVisible(player)){
+                return false;
+            }
+        }
+        return true;
+    }
 
     /**
      * Returns true if player guesses card correctly.  

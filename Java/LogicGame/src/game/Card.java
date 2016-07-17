@@ -13,10 +13,6 @@ public class Card {
 	private final String suit; 
 	private final int rank;
 	private boolean[] show = new boolean[4];
-	/*
-	 * TODO maybe implement visibility control at the gameboard level instead of at the card
-	 * level? idk mutable cards make me queasy -Brice
-	*/
 	
 	/**
 	 * Constructs a Card of a given suit and rank
