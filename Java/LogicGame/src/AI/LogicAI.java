@@ -3,6 +3,9 @@ package AI;
 import java.io.IOException;
 import java.util.*;
 
+import app.ClientTransmitter;
+import app.InternalMessage;
+
 //import app.TwoWayChannel;
 //import app.TwoWayChannelBlockingQueue;
 
@@ -11,12 +14,12 @@ import java.util.*;
 public class LogicAI implements Runnable{
 	
     private final int playerID;
-//    private final TwoWayChannel channel;
+    private final ClientTransmitter transmitter;
     
-    public LogicAI(int playerID/*, TwoWayChannelBlockingQueue channel*/){
+    public LogicAI(int playerID, ClientTransmitter transmitter){
         this.playerID = playerID;
+        this.transmitter = transmitter;
         throw new RuntimeException("Unimplemented"); //TODO
-//        this.channel = channel;
     }
 
     @Override
@@ -32,12 +35,30 @@ public class LogicAI implements Runnable{
 //            e.printStackTrace();
 //        }
         
-    	runSetupPhase();
+    	
     	
         throw new RuntimeException("Unimplemented");
     }
     
-    private void runSetupPhase() {
+    /**
+     * Checks to make sure an InternalMessage matches a desired type.
+     * @param message InternalMessage being checked
+     * @param type the type InternalMessage should match
+     * @throws InterruptedException
+     */
+    private void checkMessage(InternalMessage message, String type) throws InterruptedException{
+        assert(message.getType().equals(type));
+    }
+    
+    private void handleConnection() throws InterruptedException {
+    	
+    }
+    
+    private void handleConnectionPhase() throws InterruptedException {
+    	transmitter.informServer(false, "Finished connecting.");
+    }
+    
+    private void handleSetupPhase() throws InterruptedException {
     	
 //    	try {
 //    		assert(channel.listen().equals("Please set up your cards.  \r\n"
@@ -50,6 +71,10 @@ public class LogicAI implements Runnable{
 //        } catch (IOException e) {
 //            e.printStackTrace();
 //        }
+    }
+    
+    private void handleMainandDeclarePhase() {
+    	
     }
     
 }

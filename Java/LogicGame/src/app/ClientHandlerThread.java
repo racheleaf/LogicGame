@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.Optional;
+import AI.LogicAI;
 
 /**
  * A thread that handles a client's connection
@@ -15,6 +17,8 @@ import java.net.Socket;
 public class ClientHandlerThread implements Runnable{
 
     private final int playerID;
+    
+    //private final boolean isAI;
 
     // Controls communication to/from client
     
@@ -44,7 +48,9 @@ public class ClientHandlerThread implements Runnable{
         this.out = new PrintWriter(socket.getOutputStream(), true);
         this.playerID = playerID;
         this.transmitter = transmitter;
+        //this.isAI = false;
     }
+
 
 // Taking out TwoWayChannels and AI connections! TODO rebuild this in a less janky way :) 
     
@@ -55,15 +61,21 @@ public class ClientHandlerThread implements Runnable{
 //     * @param transmitter the ClientTransmitter through which this thread
 //     * informs / listens to the server
 //     */
-//    public ClientHandlerThread(int playerID, ClientTransmitter transmitter){
+    
+/*
+    public ClientHandlerThread(int playerID, ClientTransmitter transmitter){
 //        TwoWayChannelBlockingQueue AIChannel = new TwoWayChannelBlockingQueue();
 //        this.clientChannel = AIChannel;
-//        this.playerID = playerID;
-//        this.transmitter = transmitter;
-//        
-//        // creates and starts the AI player
-//        new Thread(new LogicAI(playerID, AIChannel.getReverseChannel())).start();;
-//    }
+        this.playerID = playerID;
+        this.transmitter = transmitter;
+        this.socket = Optional.empty();
+    	this.isAI = true;
+        
+        // creates and starts the AI player
+        new Thread(new LogicAI(playerID)).start();
+    }
+    
+*/
     
 
     

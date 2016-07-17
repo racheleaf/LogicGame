@@ -11,6 +11,7 @@ import java.util.Set;
 
 import game.GameBoard;
 import game.GameState;
+import AI.LogicAI;
 
 /**
  * A server for Logic
@@ -118,9 +119,11 @@ public class LogicServer {
             else{
                 // create an AI player
                 // TODO
-                throw new RuntimeException("AI NOT IMPLEMENTED YET"); // TEMP TEMP VERY TEMP 
-/*                new Thread(new ClientHandlerThread(numPlayers, 
-                        transmitter.getClientTransmitter(numPlayers))).start();*/            
+            	
+                new Thread(new LogicAI(numPlayers, 
+                        transmitter.getClientTransmitter(numPlayers))).start();    
+                
+                throw new RuntimeException("AI NOT IMPLEMENTED YET"); // TEMP TEMP VERY TEMP
             }
             
             // Connected client thread will send back a message
