@@ -3,17 +3,19 @@ package AI;
 import java.util.*;
 
 // contains game board state/information as known to an AI
+
 public class AIGameboard {
 	
 	int playerID;
 	int partnerID;
 	
-	// contains 4 arrays (for each player) with the String reps of each card, in order
-    private ArrayList<String[]> gameboard = new ArrayList<String[]>();
+	// contains 
+    private ArrayList<AIHand> hands = new ArrayList<AIHand>();
     
     public AIGameboard(int playerID) {
     	this.playerID = playerID;
     	partnerID = (playerID+2)%4;
+    	
     }
     
     public void updateGameState() {

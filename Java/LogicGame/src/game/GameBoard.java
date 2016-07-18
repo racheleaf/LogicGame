@@ -34,6 +34,14 @@ public class GameBoard {
     	//throw new RuntimeException("Unimplemented");
     }
     
+    /**
+     * for LogicAI use, to read the cards in the hands
+     * @return ArrayList with the four players' hands
+     */
+    public ArrayList<Hand> getHands() {
+    	return hands;
+    }
+    
     /********************************
      *      SETUP PHASE OF GAME     *
      ********************************/
